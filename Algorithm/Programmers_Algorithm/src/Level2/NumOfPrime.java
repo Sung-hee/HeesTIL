@@ -1,6 +1,6 @@
 package Level2;
 
-//소수 찾기 Level 2
+//소수 찾기 Level 2 
 public class NumOfPrime {
 	int numberOfPrime(int n) {
 		int result = 0;

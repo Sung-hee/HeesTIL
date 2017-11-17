@@ -8,7 +8,7 @@ var fetch_options = {
       'x-skpop-userId': 'klpoik',
       'Accept': 'application/json',
       'Accept-Language': 'ko_KR',
-      'appKey': '9119b69b-7184-3cc6-a1d4-84f073494e4f'
+      'appKey': 
   }
 }
 // 2. 날씨 정보 송신(json)

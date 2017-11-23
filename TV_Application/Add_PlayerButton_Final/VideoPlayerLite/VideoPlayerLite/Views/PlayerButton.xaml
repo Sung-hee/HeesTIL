@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<RelativeLayout xmlns="http://xamarin.com/schemas/2014/forms"
+                xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                x:Class="VideoPlayerLite.Views.PlayerButton">
+  <Image x:Name="Shadow"
+         RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
+         RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}"
+         RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.0}"
+         RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.0}"
+         Source="btn_viewer_control_focused_shadow.png"
+         IsVisible="{Binding Path=IsFocused, Source={x:Reference Name=ControlButton}}"/>
+  <Image x:Name="FocusBackground"
+         RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.67}"
+         RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.67}"
+         RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.17}"
+         RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.17}"
+         Source="btn_viewer_control_focused.png"
+         Opacity="0.2"
+         IsVisible="{Binding Path=IsFocused, Source={x:Reference Name=ControlButton}}"/>
+  <Image x:Name="Icon"
+         RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.458}"
+         RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.458}"
+         RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.27}"
+         RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.27}"/>
+  <Button x:Name="ControlButton"
+          RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToView, ElementName=FocusBackground, Factor=1}"
+          RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToView, ElementName=FocusBackground, Factor=1}"
+          Opacity="0"
+          Command="{Binding ControlButtonCommand}"/>
+</RelativeLayout>

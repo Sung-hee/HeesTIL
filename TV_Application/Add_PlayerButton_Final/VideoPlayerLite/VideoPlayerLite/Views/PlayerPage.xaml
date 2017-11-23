@@ -1,0 +1,72 @@
+﻿<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:Views="clr-namespace:VideoPlayerLite.Views"
+             xmlns:ViewModels="clr-namespace:VideoPlayerLite.ViewModels"
+             xmlns:Models="clr-namespace:VideoPlayerLite.Models"
+             x:Class="VideoPlayerLite.Views.PlayerPage"
+             NavigationPage.HasNavigationBar="false"
+             FetchVideoCommand="{Binding FetchSelectedVideoCommand}"
+             PlayerStatus="{Binding CurrentStatus}">
+    <ContentPage.BindingContext>
+        <ViewModels:PlayerPageViewModel/>
+    </ContentPage.BindingContext>
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Models:DurationConverter x:Key="DurationConverter"/>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <ContentPage.Content>
+        <RelativeLayout>
+            <Views:MediaRenderingView RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
+                                      RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}"/>
+            <Label x:Name="ItemTitle"
+                   RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.046}"
+                   RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.9}"
+                   RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.06}"
+                   RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.05}"
+                   FontSize="Medium"
+                   Text="{Binding SelectedVideo.Title}"/>
+            <StackLayout RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.045}"
+                         RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.127}"
+                         RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.911}"
+                         RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.05}"
+                         Orientation="Horizontal">
+                <Label x:Name="ItemPosition"
+                       Text="{Binding CurrentPosition, Converter={StaticResource DurationConverter}}"/>
+                <Label Text=" / " />
+                <Label x:Name="Duration"
+                       Text="{Binding SelectedVideo.Duration, Converter={StaticResource DurationConverter}}"/>
+            </StackLayout>
+            <Grid x:Name="ControlPad"
+                  RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.134}"
+                  RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.225}"
+                  RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.866}"
+                  RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.388}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Views:PlayerButton x:Name="PlayPauseButton"
+                                    ButtonName="PlayPause"
+                                    ButtonImage="btn_viewer_control_pause_normal.png"
+                                    Grid.Row="0"
+                                    Grid.Column="1"/>
+                <Views:PlayerButton x:Name="PrevButton"
+                                    ButtonName="Previous"
+                                    ButtonImage="btn_viewer_control_previous_normal.png"
+                                    Grid.Row="0"
+                                    Grid.Column="0"/>
+                <Views:PlayerButton x:Name="NextButton"
+                                    ButtonName="Next"
+                                    ButtonImage="btn_viewer_control_next_normal.png"
+                                    Grid.Row="0"
+                                    Grid.Column="2"/>
+            </Grid>
+        </RelativeLayout>
+    </ContentPage.Content>
+</ContentPage>

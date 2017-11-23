@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns="http://tizen.org/ns/packages" api-version="4" package="org.tizen.example.VideoPlayerLite.Tizen.Tizen.TV" version="1.0.0">
+	<profile name="tv" />
+	<ui-application appid="org.tizen.example.VideoPlayerLite.Tizen.Tizen.TV"
+					exec="VideoPlayerLite.Tizen.Tizen.TV.dll"
+					type="dotnet"
+					multiple="false"
+					taskmanage="true"
+					nodisplay="false"
+					launch_mode="single">
+  <label>VideoPlayerLite.Tizen.Tizen.TV</label>
+	<icon>VideoPlayerLite.Tizen.Tizen.TV.png</icon>
+	</ui-application>
+    <privileges>
+        <privilege>http://tizen.org/privilege/mediastorage</privilege>
+    </privileges>
+</manifest>

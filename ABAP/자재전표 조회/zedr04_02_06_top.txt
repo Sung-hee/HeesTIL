@@ -1,0 +1,27 @@
+*&---------------------------------------------------------------------*
+*& Include ZEDR04_02_06_TOP                                  Module Pool      ZEDR04_02_06
+*&
+*&---------------------------------------------------------------------*
+PROGRAM ZEDR04_02_06.
+
+TABLES : BKPF.
+
+DATA : BEGIN OF gt_data OCCURS 0,
+       BUKRS LIKE BKPF-BUKRS,
+       BELNR LIKE BKPF-BELNR,
+       GJAHR LIKE BKPF-GJAHR,
+       BLART LIKE BKPF-BLART,
+       BUDAT LIKE BKPF-BUDAT,
+       BKTXT LIKE BKPF-BKTXT,
+  END OF gt_Data.
+
+DATA : go_container TYPE REF TO cl_gui_docking_container,
+       go_grid      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat      TYPE lvc_s_fcat,
+       gt_fcat      TYPE lvc_t_fcat,
+       gs_layout    TYPE lvc_s_layo,
+       gs_stable    TYPE lvc_s_stbl,
+       gs_variant   TYPE disvariant.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

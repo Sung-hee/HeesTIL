@@ -1,0 +1,12 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_02_06_SCR
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN BEGIN OF BLOCK TEST1 WITH FRAME TITLE text-001.
+  PARAMETERS : p_gjahr LIKE BKPF-GJAHR OBLIGATORY,
+               p_bukrs LIKE BKPF-BUKRS OBLIGATORY.
+  SELECT-OPTIONS : s_belnr FOR BKPF-BELNR.
+SELECTION-SCREEN END OF BLOCK TEST1.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

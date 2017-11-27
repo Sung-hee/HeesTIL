@@ -1,0 +1,93 @@
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+  SET TITLEBAR '0100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CREATE_SCREEN  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE create_screen OUTPUT.
+
+  CREATE OBJECT go_container
+    EXPORTING
+      container_name = 'GO_CONTAINER'.
+
+  CREATE OBJECT go_grid
+    EXPORTING
+      i_parent = go_container.
+
+  CALL METHOD go_grid->set_table_for_first_display
+    EXPORTING
+*      i_buffer_active               =
+*      i_bypassing_buffer            =
+*      i_consistency_check           =
+*      i_structure_name              =
+      is_variant                    = gs_variant
+      i_save                        = 'X'
+*      i_default                     = 'X'
+      is_layout                     = gs_layout
+*      is_print                      =
+*      it_special_groups             =
+*      it_toolbar_excluding          =
+*      it_hyperlink                  =
+*      it_alv_graphics               =
+*      it_except_qinfo               =
+*      ir_salv_adapter               =
+    CHANGING
+      it_outtab                     = gt_data[]
+      it_fieldcatalog               = gt_fcat
+*      it_sort                       =
+*      it_filter                     =
+*    EXCEPTIONS
+*      invalid_parameter_combination = 1
+*      program_error                 = 2
+*      too_many_lines                = 3
+*      others                        = 4
+          .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_02_02_O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  SET_FIELD  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_field OUTPUT.
+  CLEAR : gs_fcat, gt_fcat.
+
+  PERFORM set_fcat USING : 'X'  'MJAHR' 'Material Doc.'             'MKPF'  'MJAHR',
+                           'X'  'MBLNR' 'Mat. Doc. Year'            'MKPF'  'MBLNR',
+                           'X'  'ZEILE' 'Mat. Doc.Item'             'MSEG'  'ZEILE',
+                           ' '  'BLART' 'Document type'             'MKPF'  'BLART',
+                           ' '  'BUDAT' 'Posting Date'              'MKPF'  'BUDAT',
+                           ' '  'MATNR' 'Material Number'           'MSEG'  'MATNR',
+                           ' '  'WERKS' 'Plant'                     'MSEG'  'WERKS',
+                           ' '  'DMBTR' 'Amount in local currency'  'MSEG'  'DMBTR',
+                           ' '  'WAERS' 'Currency Key'              'MSEG'  'WAERS',
+                           ' '  'MENGE' 'Quantity'                  'MSEG'  'MENGE',
+                           ' '  'MEINS' 'Base Unit of Measure'      'MSEG'  'MEINS'.
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-grid_title = 'List'.
+  gs_layout-smalltitle = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-cwidth_opt = 'X'.
+
+  gs_variant-report = sy-repid.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

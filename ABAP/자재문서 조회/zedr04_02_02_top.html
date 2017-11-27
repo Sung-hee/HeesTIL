@@ -1,0 +1,45 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZEDR04_02_02_TOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZEDR04_02_02_TOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZEDR04_02_02_TOP</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include ZEDR04_02_02_TOP                                  Report ZEDR04_02_02</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+REPORT ZEDR04_02_02.
+
+TABLES : mkpf.
+
+DATA : BEGIN OF gt_data OCCURS 0,
+       mjahr  LIKE mkpf-mjahr,
+       mblnr  LIKE mkpf-mblnr,
+       zeile  LIKE mseg-zeile,
+       blart  LIKE mkpf-blart,
+       budat  LIKE mkpf-budat,
+       matnr  LIKE mseg-matnr,
+       werks  LIKE mseg-werks,
+       dmbtr  LIKE mseg-dmbtr,
+       waers  LIKE mseg-waers,
+       menge  LIKE mseg-menge,
+       meins  LIKE mseg-meins,
+  END OF gt_data.
+
+DATA : go_container TYPE REF TO cl_gui_custom_container,
+       go_grid      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat      TYPE lvc_s_fcat,
+       gt_fcat      TYPE lvc_t_fcat,
+       gs_layout    TYPE lvc_s_layo,
+       gs_variant   TYPE disvariant.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

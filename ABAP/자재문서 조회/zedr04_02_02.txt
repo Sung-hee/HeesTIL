@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Report  ZEDR04_02_02
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZEDR04_02_02_TOP                        .    " global Data
+
+ INCLUDE ZEDR04_02_02_scr                        .  " Selection Screen
+ INCLUDE ZEDR04_02_02_O01                        .  " PBO-Modules
+ INCLUDE ZEDR04_02_02_I01                        .  " PAI-Modules
+ INCLUDE ZEDR04_02_02_F01                        .  " FORM-Routines
+
+START-OF-SELECTION.
+  PERFORM get_data.
+ CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> 자재문서조회
+
+*Text elements
+*----------------------------------------------------------
+* 001 검색
+
+
+*Selection texts
+*----------------------------------------------------------
+* P_MJAHR D       .
+* S_MBLNR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   Data no Found
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

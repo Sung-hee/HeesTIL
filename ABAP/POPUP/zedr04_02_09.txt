@@ -1,0 +1,39 @@
+*&---------------------------------------------------------------------*
+*& Report  ZEDR04_02_09
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZEDR04_02_09_TOP                        .    " global Data
+
+ INCLUDE ZEDR04_02_09_cls                        .  " Class
+ INCLUDE ZEDR04_02_09_scr                        .  " Select Screen
+ INCLUDE ZEDR04_02_09_O01                        .  " PBO-Modules
+ INCLUDE ZEDR04_02_09_I01                        .  " PAI-Modules
+ INCLUDE ZEDR04_02_09_F01                        .  " FORM-Routines
+
+START-OF-SELECTION.
+ PERFORM get_data.
+CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> SCARR LIST
+* 0101 --> Sflight List
+
+
+*Selection texts
+*----------------------------------------------------------
+* S_CARRID D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   Data Not Found
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

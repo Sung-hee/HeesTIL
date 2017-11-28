@@ -1,0 +1,9 @@
+* regenerated at 2017/08/29 15:32:44
+FUNCTION-POOL ZFG04                      MESSAGE-ID SV.
+
+* INCLUDE LZFG04D...                         " Local class definition
+  INCLUDE LSVIMDAT                                . "general data decl.
+  INCLUDE LZFG04T00                               . "view rel. data dcl.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

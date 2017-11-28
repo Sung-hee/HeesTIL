@@ -1,0 +1,48 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZEDR04_02_09_TOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZEDR04_02_09_TOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZEDR04_02_09_TOP</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include ZEDR04_02_09_TOP                                  Report ZEDR04_02_09</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+REPORT ZEDR04_02_09.
+
+CLASS : lcl_event_handler DEFINITION DEFERRED.
+TABLES : SCARR.
+
+DATA : gt_data    TYPE TABLE OF SCARR WITH HEADER LINE,
+       gt_sflight TYPE TABLE OF sflight WITH HEADER LINE.
+
+DATA : gt_okcode LIKE sy-UCOMM.
+
+DATA : go_container TYPE REF TO cl_gui_docking_container,
+       go_grid      TYPE REF TO cl_gui_alv_grid,
+       go_handler   TYPE REF TO lcl_event_handler,
+       gs_fcat      TYPE lvc_s_fcat,
+       gt_fcat      TYPE lvc_t_fcat,
+       gs_layout    TYPE lvc_s_layo,
+       gs_stable    TYPE lvc_s_stbl,
+       gs_variant   TYPE disvariant.
+
+<font color ="#0000FF">*Popup Component</font>
+DATA : go_container_pop TYPE REF TO cl_gui_custom_container,
+       go_grid_pop      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat_pop      TYPE lvc_s_fcat,
+       gt_fcat_pop      TYPE lvc_t_fcat,
+       gs_toolbar       TYPE ui_func,
+       gt_toolbar       TYPE ui_functions,
+       gs_layout_pop    TYPE lvc_s_layo.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

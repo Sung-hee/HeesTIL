@@ -1,0 +1,32 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_02_09_CLS
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&       Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*        Text
+*----------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+   PUBLIC SECTION.
+    METHODS : hotspot_handle FOR EVENT hotspot_click
+                            OF cl_gui_alv_grid
+              IMPORTING
+                e_row_id
+                e_column_id
+                es_row_no.
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*&       Class (Implementation)  lcl_event_handler
+*&---------------------------------------------------------------------*
+*        Text
+*----------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD hotspot_handle.
+    PERFORM hotspot_handle USING e_row_id
+                                 e_column_id
+                                 es_row_no.
+  ENDMETHOD.
+ENDCLASS.               "lcl_event_handler
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

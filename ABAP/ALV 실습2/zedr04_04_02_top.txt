@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*& Include ZEDR04_04_02_TOP                                  Report ZEDR04_04_02
+*&
+*&---------------------------------------------------------------------*
+REPORT zedr04_04_02 MESSAGE-ID oo.
+
+TABLES : ztedu_04_02.
+
+DATA : gv_okcode LIKE sy-ucomm.
+
+DATA : gt_data TYPE TABLE OF ztedu_04_02 WITH HEADER LINE.
+
+DATA : go_container TYPE REF TO cl_gui_docking_container,
+       go_grid      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat      TYPE lvc_s_fcat,
+       gt_fcat      TYPE lvc_t_fcat,
+       gs_layout    TYPE lvc_s_layo,
+       gs_stable    TYPE lvc_s_stbl,
+       gs_row       TYPE lvc_s_row,
+       gt_row       TYPE lvc_t_row,
+       gs_toolbar   TYPE ui_func,
+       gt_toolbar   TYPE ui_functions,
+       gs_variant   TYPE disvariant.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

@@ -1,0 +1,221 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZEDR04_04_02_F01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZEDR04_04_02_F01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZEDR04_04_02_F01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZEDR04_04_02_F01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_data .
+  CLEAR : gt_data, gt_data[].
+
+  SELECT kokrs bukrs sabun name status gender mobile
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    FROM ztedu_04_02
+   WHERE bukrs IN s_bukrs.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data Not Found' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_FCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_0025   text</font>
+<font color ="#0000FF">*      --&gt;P_0026   text</font>
+<font color ="#0000FF">*      --&gt;P_0027   text</font>
+<font color ="#0000FF">*      --&gt;P_0028   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_fcat  USING p_key p_field p_text p_ref_table.
+
+  gs_fcat-key       = p_key.
+  gs_fcat-fieldname = p_field.
+  gs_fcat-coltext   = p_text.
+  gs_fcat-ref_table = p_ref_table.
+
+  CASE p_field.
+    WHEN 'GENDER'.
+      gs_fcat-checkbox = 'X'.
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  REFRESH_GRID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM refresh_grid .
+  gs_stable-col = 'X'.
+  gs_stable-row = 'X'.
+  CALL METHOD go_grid-&gt;refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SAVE_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM save_data .
+  CALL METHOD go_grid-&gt;check_changed_data.
+
+  IF gt_data[] IS NOT INITIAL.
+    MODIFY ztedu_04_02 FROM TABLE gt_data.
+
+    IF sy-subrc EQ 0.
+      COMMIT WORK.
+      MESSAGE s000 WITH 'Save success'.
+    ELSE.
+      ROLLBACK WORK.
+      MESSAGE s000 WITH 'Save fail'.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DELETE_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM delete_data.
+  DATA : lt_del TYPE TABLE OF ztedu_04_02 WITH HEADER LINE.
+
+  CLEAR : lt_del, lt_del[], gs_row, gt_row.
+
+  CALL METHOD go_grid-&gt;get_selected_rows
+    IMPORTING
+      et_index_rows = gt_row.
+
+  IF gt_row IS INITIAL.
+    MESSAGE s000 WITH 'Please Select row' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  LOOP AT gt_row INTO gs_row.
+    READ TABLE gt_data INDEX gs_row-index.
+
+    IF sy-subrc EQ 0.
+      MOVE-CORRESPONDING gt_data TO lt_del.
+
+      APPEND lt_del.
+      CLEAR  lt_del.
+    ENDIF.
+  ENDLOOP.
+
+  IF lt_del[] IS NOT INITIAL.
+    DELETE ztedu_04_02 FROM TABLE lt_del.
+
+    IF sy-subrc EQ 0.
+      COMMIT WORK AND WAIT.
+      MESSAGE s000 WITH 'Delete Succes'.
+      PERFORM get_data.
+    ELSE.
+      ROLLBACK WORK.
+      MESSAGE s000 WITH 'Delete fail' DISPLAY LIKE 'E'.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  REMOVE_TOOLBARICON</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM remove_toolbaricon .
+  gs_toolbar = cl_gui_alv_grid=&gt;mc_fc_loc_undo.
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+
+  gs_toolbar = cl_gui_alv_grid=&gt;mc_fc_loc_paste.
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+
+  gs_toolbar = cl_gui_alv_grid=&gt;mc_fc_loc_copy.
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+
+  gs_toolbar = cl_gui_alv_grid=&gt;mc_fc_print.
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_COMPANY</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_company .
+  DATA : BEGIN OF lt_bukrs OCCURS 0,
+           bukrs LIKE t001-bukrs,
+           butxt LIKE t001-butxt,
+         END OF lt_bukrs.
+
+  CLEAR : lt_bukrs, lt_bukrs[].
+
+  SELECT bukrs butxt
+    INTO CORRESPONDING FIELDS OF TABLE lt_bukrs
+    FROM t001.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'No Company data Found'.
+    EXIT.
+  ENDIF.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'BUKRS'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'S_BUKRS_LOW'
+      window_title    = '회사코드 리스트'
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_bukrs[]
+    exceptions
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

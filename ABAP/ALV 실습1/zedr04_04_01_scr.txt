@@ -1,0 +1,11 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_04_01_SCR
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b11 WITH FRAME TITLE text-001.
+  SELECT-OPTIONS s_MATNR FOR MARA-MATNR.
+  PARAMETERS : p_STAN RADIOBUTTON GROUP rb1 DEFAULT 'X',
+               p_CBO  RADIOBUTTON GROUP rb1.
+SELECTION-SCREEN END OF BLOCK b11.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

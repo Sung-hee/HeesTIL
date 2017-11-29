@@ -1,0 +1,73 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_04_02_O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+  SET TITLEBAR '0100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_FIELD  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_field OUTPUT.
+  CLEAR : gs_fcat, gt_fcat.
+
+  IF gt_fcat IS INITIAL.
+    PERFORM set_fcat USING :
+          'X' 'KOKRS'  'Controlling Area' 'ZTEDU_04_02',
+          'X' 'BUKRS'  '회사코드'         'ZTEDU_04_02',
+          ' ' 'SABUN'  '사번'             'ZTEDU_04_02',
+          ' ' 'NAME'   '성명'             'ZTEDU_04_02',
+          ' ' 'STATUS' '재직상태'         'ZTEDU_04_02',
+          ' ' 'GENDER' '성별'             'ZTEDU_04_02',
+          ' ' 'MOBILE' '휴대폰'           'ZTEDU_04_02'.
+
+    gs_layout-zebra       = 'X'.
+    gs_layout-sel_mode    = 'X'.
+    gs_layout-cwidth_opt = 'X'.
+    gs_variant-report     = sy-repid.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CREATE_SCREEN  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE create_screen OUTPUT.
+  IF go_container IS NOT BOUND.
+    CREATE OBJECT go_container
+      EXPORTING
+        side      = go_container->dock_at_left
+        extension = 2000.
+    CREATE OBJECT go_grid
+      EXPORTING
+        i_parent = go_container.
+
+    CLEAR : gs_toolbar, gt_toolbar.
+    PERFORM remove_toolbaricon.
+
+    CALL METHOD go_grid->set_table_for_first_display
+      EXPORTING
+        is_variant           = gs_variant
+        i_save               = 'X'
+        is_layout            = gs_layout
+        it_toolbar_excluding = gt_toolbar
+      CHANGING
+        it_outtab            = gt_data[]
+        it_fieldcatalog      = gt_fcat.
+  ELSE.
+    PERFORM refresh_grid.
+  ENDIF.
+
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

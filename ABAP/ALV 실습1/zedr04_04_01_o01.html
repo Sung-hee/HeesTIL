@@ -1,0 +1,80 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZEDR04_04_01_O01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZEDR04_04_01_O01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZEDR04_04_01_O01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZEDR04_04_01_O01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  STATUS_0100  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+  SET TITLEBAR '0100'.
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  SET_FIELD  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE set_field OUTPUT.
+  CLEAR : gs_fcat, gt_fcat.
+
+  PERFORM set_fcat USING :
+        'X' 'MATNR' '자재코드'      'ZTEDU04_02'  ,
+        'X' 'WERKS' '플랜트'        'ZTEDU04_02'  ,
+        ' ' 'MAKTX' '자재내역'      'ZTEDU04_02'  ,
+        ' ' 'PSTAT' '유지보수 상태' 'ZTEDU04_02'  ,
+        ' ' 'MTART' '자재타입'      'ZTEDU04_02'  ,
+        ' ' 'MATKL' '자재그룹'      'ZTEDU04_02'  ,
+        ' ' 'NAME1' '플랜트 내역'   'ZTEDU04_02'  ,
+        ' ' 'MEINS' '단위'          'ZTEDU04_02'  .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-cwidth_opt = 'X'.
+  gs_variant-report    = sy-repid.
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  CREATE_SCREEN  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE create_screen OUTPUT.
+  IF go_container IS NOT BOUND.
+    CREATE OBJECT go_container
+      EXPORTING
+        side      = go_container-&gt;dock_at_left
+        extension = 2000.
+
+    CREATE OBJECT go_grid
+      EXPORTING
+        i_parent = go_container.
+
+    CALL METHOD go_grid-&gt;set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'X'
+        is_layout       = gs_layout
+      CHANGING
+        it_outtab       = gt_data[]
+        it_fieldcatalog = gt_fcat.
+  ELSE.
+    PERFORM refresh_grid.
+  ENDIF.
+ENDMODULE.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

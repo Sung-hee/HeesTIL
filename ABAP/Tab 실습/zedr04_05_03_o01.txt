@@ -1,0 +1,129 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_05_03_O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+  SET TITLEBAR '0100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  ACTIVE_TAB  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE active_tab OUTPUT.
+  go_tab-activetab = gv_pressedtab.
+
+  CASE gv_pressedtab.
+    WHEN 'FTAB'.
+      gv_subscreen = '0101'.
+    WHEN 'STAB'.
+      gv_subscreen = '0102'.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_FIELD  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_field OUTPUT.
+  IF gt_fcat IS INITIAL.
+    PERFORM set_fcat USING :
+          'X' 'MANDT'       'Client'                               ,
+          'X' 'CARRID'      'Airline Code'                         ,
+          ' ' 'CONNID'      'Flight Connection Number'             ,
+          ' ' 'FLDATE'      'Flight date'                          ,
+          ' ' 'PRICE'       'Airfare'                              ,
+          ' ' 'CURRENCY'    'Local currency of airline'            ,
+          ' ' 'PLANETYPE'   'Aircraft Type'                        ,
+          ' ' 'SEATSMAX'    'Maximum capacity in economy class'    ,
+          ' ' 'SEATSOCC'    'Occupied seats in economy class'      ,
+          ' ' 'PAYMENTSUM'  'Total of current bookings'            .
+  ENDIF.
+
+  gs_layout-zebra     = 'X'.
+  gs_layout-sel_mode  = 'D'.
+  gs_layout-cwidth_opt = 'X'.
+  gs_variant-report   = sy-repid.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CREATE_SCREEN  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE create_screen OUTPUT.
+  IF go_container1 IS NOT BOUND.
+    CREATE OBJECT go_container1
+      EXPORTING
+        container_name = 'GO_CONTAINER1'.
+    CREATE OBJECT go_grid1
+      EXPORTING
+        i_parent = go_container1.
+
+    CLEAR : gs_toolbar, gt_toolbar.
+    PERFORM remove_toolbaricon.
+
+
+    CALL METHOD go_grid1->set_table_for_first_display
+      EXPORTING
+        i_structure_name = 'SFLIGHT'
+        i_save           = 'X'
+        is_layout        = gs_layout
+        it_toolbar_excluding = gt_toolbar
+      CHANGING
+        it_outtab        = gt_sflight[].
+
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_FIELD2  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_field2 OUTPUT.
+  IF gt_fcat2 IS NOT INITIAL.
+    PERFORM set_fcat2 USING :
+          'X' 'MANDT'       'Client'                     ,
+          'X' 'CARRID'      'Airline Code'               ,
+          ' ' 'CARRNAME'    'Airline name'               ,
+          ' ' 'CURRCODE'    'Local currency of airline'  ,
+          ' ' 'URL'         'Airline URL'                .
+  ENDIF.
+
+    gs_layout-zebra     = 'X'.
+    gs_layout-sel_mode  = 'D'.
+    gs_layout-cwidth_opt = 'X'.
+    gs_variant-report   = sy-repid.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CREATE_SCREEN2  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE create_screen2 OUTPUT.
+  IF go_container2 IS NOT BOUND.
+    CREATE OBJECT go_container2
+      EXPORTING
+        container_name = 'GO_CONTAINER2'.
+    CREATE OBJECT go_grid2
+      EXPORTING
+        i_parent = go_container2.
+
+    CALL METHOD go_grid2->set_table_for_first_display
+      EXPORTING
+        i_structure_name = 'SCARR'
+        i_save           = 'X'
+        is_layout        = gs_layout
+        it_toolbar_excluding = gt_toolbar
+      CHANGING
+        it_outtab        = gt_scarr[].
+
+  ENDIF.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

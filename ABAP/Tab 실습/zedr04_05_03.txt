@@ -1,0 +1,24 @@
+*&---------------------------------------------------------------------*
+*& Report  ZEDR04_05_03
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZEDR04_05_03_TOP                        .    " global Data
+
+ INCLUDE ZEDR04_05_03_O01                        .  " PBO-Modules
+ INCLUDE ZEDR04_05_03_I01                        .  " PAI-Modules
+ INCLUDE ZEDR04_05_03_F01                        .  " FORM-Routines
+
+ START-OF-SELECTION.
+  PERFORM get_data.
+ CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> Tab Sflight & Scarr
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

@@ -1,0 +1,93 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZEDR04_05_03_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0041   text
+*      -->P_0042   text
+*      -->P_0043   text
+*----------------------------------------------------------------------*
+FORM set_fcat  USING   p_key p_field p_text.
+
+  gs_fcat-key         = p_key.
+  gs_fcat-fieldname   = p_field.
+  gs_fcat-coltext     = p_text.
+  gs_fcat-ref_field   = p_field.
+  gs_fcat-ref_table   = 'SFLIGHT'.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data .
+  CLEAR : gt_sflight, gt_sflight[], gt_scarr, gt_scarr[].
+
+  SELECT carrid connid fldate price currency planetype seatsmax seatsocc paymentsum
+    INTO CORRESPONDING FIELDS OF TABLE gt_sflight
+    FROM sflight.
+
+  SELECT carrid carrname currcode url
+    INTO CORRESPONDING FIELDS OF TABLE gt_scarr
+    FROM scarr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0161   text
+*      -->P_0162   text
+*      -->P_0163   text
+*----------------------------------------------------------------------*
+FORM set_fcat2  USING    p_key p_field p_text.
+
+  gs_fcat-key         = p_key.
+  gs_fcat-fieldname   = p_field.
+  gs_fcat-coltext     = p_text.
+  gs_fcat-ref_field   = p_field.
+  gs_fcat-ref_table   = 'SCARR'.
+
+  APPEND gs_fcat2 TO gt_fcat2.
+  CLEAR  gs_fcat2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  REMOVE_TOOLBARICON
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM remove_toolbaricon .
+  gs_toolbar = cl_gui_alv_grid=>mc_fc_print.
+
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+
+  gs_toolbar = cl_gui_alv_grid=>mc_fc_graph.
+
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+
+  gs_toolbar = cl_gui_alv_grid=>mc_fc_current_variant.
+
+  APPEND gs_toolbar TO gt_toolbar.
+  CLEAR gs_toolbar.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

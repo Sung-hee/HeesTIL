@@ -1,0 +1,233 @@
+*&---------------------------------------------------------------------*
+*& Include ZPPG0010_02_TOP                                   Report ZPPG0010_02
+*&
+*&---------------------------------------------------------------------*
+
+TABLES : sscrfields.
+
+DATA: gv_file  LIKE rlgrap-filename.
+
+DATA : gv_okcode TYPE sy-ucomm.
+
+
+*----------------------------------------------------------------------*
+* ALV 관련 변수 선언
+*----------------------------------------------------------------------*
+DATA : go_doc_cont TYPE REF TO cl_gui_docking_container,
+       go_grid     TYPE REF TO cl_gui_alv_grid,
+       gs_layo     TYPE lvc_s_layo,
+       gt_fcat     TYPE lvc_t_fcat,
+       gs_fcat     TYPE lvc_s_fcat.
+
+*----------------------------------------------------------------------*
+* Field symbols
+*----------------------------------------------------------------------*
+FIELD-SYMBOLS : <fs> TYPE any.
+
+
+*----------------------------------------------------------------------*
+* Type : 엑셀 양식과 동일한 구조
+*----------------------------------------------------------------------*
+
+TYPES : BEGIN OF t_xlsx,
+
+          matnr      LIKE    mara-matnr,
+
+          maktx      LIKE makt-maktx  , "Material Description
+          mtart      LIKE mara-mtart  , "Material Type
+          werks      LIKE marc-werks  , "Plant
+          lgort      LIKE mard-lgort  , "Storage Location
+          meins      LIKE mara-meins  , "Base Unit of Measure
+          matkl      LIKE mara-matkl  ,  "Material Group
+          spart      LIKE mara-spart  ,  "Division
+          bismt      LIKE mara-bismt  ,  "Old Material Number
+*          nmatnr     LIKE mara-nmatnr  , "Naked Part No 비표준 확장필드 삭제
+          brgew      LIKE mara-brgew  ,  "Gross Weight
+          ntgew      LIKE mara-ntgew  ,  "Net Weight
+          gewei      LIKE mara-gewei  ,  "Weight unit
+          klart      LIKE rmclf-klart  , "clss Type
+          class      LIKE rmclf-class  , "Class
+          magrv      LIKE mara-magrv  , "Matl grp pack.matls
+          vhart      LIKE mara-vhart  , "Packaging mat. Type
+          mvgr1      LIKE mvke-mvgr1  , "Material group 1
+          mvgr2      LIKE mvke-mvgr2,
+          mvgr3      LIKE mvke-mvgr3,
+          mvgr4      LIKE mvke-mvgr4,
+          mvgr5      LIKE mvke-mvgr5,
+          raube      LIKE mara-raube  , "Storage Conditions
+
+          usequ      LIKE marc-usequ  , " Quota arrangement usage
+          xchpf      LIKE marc-xchpf,
+          kordb      LIKE marc-kordb,
+          lgfsb      LIKE marc-lgfsb, "Storage loc. for EP.
+
+          bstma      LIKE marc-bstma,
+          sobsl      LIKE marc-sobsl,
+          plifz      LIKE marc-plifz,
+*          endind     LIKE marc-endind, 비표준 확장필드 삭제
+          ssqss      LIKE marc-ssqss,
+          qzgtp      LIKE marc-qzgtp,
+
+          lgpbe      LIKE mard-lgpbe,
+          art        LIKE qmat-art,
+          aktiv      LIKE qmat-aktiv,
+          bklas      LIKE mbew-bklas,
+          ncost      LIKE marc-ncost,
+
+          dismm      LIKE    marc-dismm,    "MRP Type
+          dispo      LIKE    marc-dispo,      "MRP Controller
+          sbdkz      LIKE    marc-sbdkz,     " Individual/c
+          mtpos      LIKE    mvke-mtpos,       "Item category group
+          dzeit      LIKE      marc-dzeit,       "In-house production time
+          fabkz      LIKE    marc-fabkz,       "JIT delivery sched.
+          lgpro      LIKE    marc-lgpro,       "Prod. stor. Location(ALABAMA 추가 JDH-2016.01.11)
+          value_char LIKE    bapi1003_alloc_values_char-value_char.
+
+TYPES : END OF t_xlsx .
+
+
+*----------------------------------------------
+* 200 스키린 용 Type 정의
+*----------------------------------------------
+
+DATA : gv_mtart TYPE zppg0010_02t-mtart,
+       gv_werks TYPE zppg0010_02t-werks.
+
+
+*----------------------------------------------
+*2.Template  200번 화면 데이타 ,TYPE 정의
+*----------------------------------------------
+
+*Basic Data1
+DATA : BEGIN OF gt_i , "OCCURS 0,
+
+         mtpos_mara    LIKE mara-mtpos_mara,  "GenItemCatGroup
+         mbrsh         LIKE mara-mbrsh,       "Industry Sector
+
+*Sales1
+         vrkme         LIKE  mvke-vrkme,   "Sales unit
+         aland         LIKE  mlan-aland,   "Country
+         taxm1         LIKE  mlan-taxm1,   "TAX Classicfication
+         dwerk         LIKE  mvke-dwerk, "Delivering Plant
+*Purchasing
+         ekgrp         LIKE marc-ekgrp, "Purchasing Group
+*MRP1
+         disgr         LIKE marc-disgr, "  MRP Group
+*DISMM LIKE MARC-DISMM, "  MRP Type
+*DISPO LIKE MARC-DISPO, "  MRP Controller
+         disls         LIKE marc-disls, "  Lot size
+*MRP3
+         perkz         LIKE marc-perkz, "  Period Indicator
+         strgr         LIKE marc-strgr, "  Strategy group
+         mtvfp         LIKE marc-mtvfp, "  Availability check
+*Quality     management
+         qmpur         LIKE mara-qmpur, "  QM proc. active
+
+*Accouting 1
+         mlmaa         LIKE mbew-mlmaa, "  ML.act.
+         mlast         LIKE mbew-mlast, "  Price Determ.
+*Sales2
+         kondm         LIKE mvke-kondm, "  Material pricing grp
+         ktgrm         LIKE mvke-ktgrm, "  Acct assignment grp
+*MTPOS LIKE MVKE-MTPOS, "  Item category group
+*MRP2     , "
+         beskz         LIKE marc-beskz, "  Procurement type
+         fhori         LIKE marc-fhori, "  SchedMargin key
+*MRP4
+         altsl         LIKE marc-altsl, "  Selection method
+*SBDKZ LIKE MARC-SBDKZ, "  Individual/coll.
+         sauft         LIKE marc-sauft, "Repetitive mfg(REM)
+         sfepr         LIKE marc-sfepr, "  REM profile
+         kzbed         LIKE marc-kzbed,  "Indicator for Requirements Grouping
+*Costing1
+         ekalr         LIKE mbew-ekalr, "  With Qty Structure
+         hkmat         LIKE mbew-hkmat, "  Material Origin
+         prctr         LIKE marc-prctr, "  Profit Center
+         losgr         LIKE marc-losgr, "Lot Size for Product Costing
+*Sales General
+         tragr         LIKE mara-tragr, "  Trans. Grp
+         ladgr         LIKE marc-ladgr, "  LoadingGrp
+
+         basic_view, "*   Basic Data
+         sales_view,"* Sales Data
+         purchase_view,"* Purchasing Data
+         mrp_view,"* MRP Dtata
+         pnst_view,"* General Plant / Storage Data
+         quality_view,"* Quality Data
+         anc_view,"* Accounting/Costing Data
+
+       END OF  gt_i.
+
+
+*----------------------------------------------------------------------*
+* GT_DATA용 TYPE 정의
+*----------------------------------------------------------------------*
+
+TYPES : BEGIN OF t_data.
+TYPES : stats TYPE c LENGTH 4,   " Signal.
+        remsg TYPE bapi_msg.     " Return MSG.
+    INCLUDE TYPE t_xlsx.
+    INCLUDE STRUCTURE gt_i.
+TYPES : END OF t_data .
+
+
+*----------------------------------------------------------------------*
+* IT & STRUCTURE 인터널 테이블 선언
+*----------------------------------------------------------------------*
+DATA: gt_data TYPE t_data         OCCURS 0 WITH HEADER LINE,
+      gt_xlsx TYPE t_xlsx         OCCURS 0 WITH HEADER LINE,
+      gt_xstb LIKE alsmex_tabline OCCURS 0 WITH HEADER LINE.
+
+DATA: gs_data   TYPE t_data.
+
+*----------------------------------------------------------------------*
+* zppg0010_02t 조회용 Data 선언
+*----------------------------------------------------------------------*
+" Without Header
+DATA : gt_0010t TYPE TABLE OF zppg0010_02t.
+*DATA : gs_0010t TYPE zppg0010_02t. 아래처럼해도되고 이렇게해도 된다
+DATA : gs_0010t LIKE LINE OF gt_0010t.
+
+
+
+" With Header
+*DATA: gt_0010t TYPE TABLE OF zppg0010_02t WITH HEADER LINE.
+" With Header
+*DATA: gt_0010t TYPE zppg0010_02t OCCURS 0.
+
+
+*----------------------------------------------------------------------*
+* 1000번 셀렉션 스크린
+*----------------------------------------------------------------------*
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-s01.
+PARAMETERS : p_paths TYPE rlgrap-filename
+                     VISIBLE LENGTH 50 MODIF ID u "파일선택
+                     DEFAULT 'C:\'.
+SELECTION-SCREEN END OF BLOCK b1.
+
+SELECTION-SCREEN FUNCTION KEY 1.
+SELECTION-SCREEN FUNCTION KEY 2. "1000 스크린에 임의의 버튼 FC 은 5개까지 실행버튼 제외"
+
+
+*----------------------------------------------------------------------*
+* AT SELECTION-SCREEN
+*----------------------------------------------------------------------*
+
+* 파일찾기 F4
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_paths.
+  PERFORM get_file USING 'O' p_paths.
+
+* 1000번 스크린 기능 버튼(1~5까지 가능)
+AT SELECTION-SCREEN.
+  CASE sscrfields-ucomm.
+    WHEN 'FC01'.
+      PERFORM download_templete.
+    WHEN 'FC02'.
+*      CLEAR : gv_mtart, gv_werks, gt_i.
+      PERFORM init_200_dyn.
+      CALL SCREEN '0200'.
+  ENDCASE.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

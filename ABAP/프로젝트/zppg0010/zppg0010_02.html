@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPPG0010_02</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPPG0010_02</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Program ZPPG0010_02</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  ZPPG0010_02</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT zppg0010_02 MESSAGE-ID zppgm.
+
+include <a href ="zppg0010_02_top.html">zppg0010_02_top</a>.    " global Data
+
+include <a href ="zppg0010_02_o01.html">zppg0010_02_o01</a>.  " PBO-Modules
+include <a href ="zppg0010_02_i01.html">zppg0010_02_i01</a>.  " PAI-Modules
+include <a href ="zppg0010_02_f01.html">zppg0010_02_f01</a>.  " FORM-Routines
+
+
+INITIALIZATION.
+  PERFORM do_init.
+
+START-OF-SELECTION.
+  PERFORM get_data_from200. "200번 스크린에서 공통 Data를 가져오기
+  PERFORM upload_data. " 엑셀만 읽어서 업로드
+  PERFORM modify_gt_data. " 200번이 가진 데이터를 ALV의 해당위치에 넣어주기
+
+  IF gt_data[] is INITIAL.
+    MESSAGE S001 WITH 'Data Not Found' DISPLAY LIKE 'E'.
+  ELSE.
+    CALL SCREEN '0100'.
+  ENDIF.
+
+<font color ="#0000FF">*GUI Texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* T0100 --&gt; Create Material Master</font>
+<font color ="#0000FF">* T0200 --&gt; Field Info.</font>
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* C01 Material</font>
+<font color ="#0000FF">* C02 Industry Sector</font>
+<font color ="#0000FF">* C03 Material Type</font>
+<font color ="#0000FF">* C04 Lab/Office</font>
+<font color ="#0000FF">* C05 Base Unit of Measure</font>
+<font color ="#0000FF">* C06 Material Group</font>
+<font color ="#0000FF">* C07 Division</font>
+<font color ="#0000FF">* C08 Old Material Number</font>
+<font color ="#0000FF">* C09 GenItemCatGroup</font>
+<font color ="#0000FF">* C10 Size/dimensions</font>
+<font color ="#0000FF">* C11 Naked Part No</font>
+<font color ="#0000FF">* C12 Gross Weight</font>
+<font color ="#0000FF">* C13 Net Weight</font>
+<font color ="#0000FF">* C14 Weight unit</font>
+<font color ="#0000FF">* C15 Trans. Grp</font>
+<font color ="#0000FF">* C16 Order Unit</font>
+<font color ="#0000FF">* C17 Storage Conditions</font>
+<font color ="#0000FF">* C18 QM proc. active</font>
+<font color ="#0000FF">* C19 Class Type</font>
+<font color ="#0000FF">* C20 Material Description</font>
+<font color ="#0000FF">* C21 Plant</font>
+<font color ="#0000FF">* C22 Class</font>
+<font color ="#0000FF">* C23 LoadingGrp</font>
+<font color ="#0000FF">* C24 Purchasing Group</font>
+<font color ="#0000FF">* C25 Quota arr. Usage</font>
+<font color ="#0000FF">* C26 Batch Management</font>
+<font color ="#0000FF">* C27 Source List</font>
+<font color ="#0000FF">* C28 MRP Group</font>
+<font color ="#0000FF">* F01 Templete Download</font>
+<font color ="#0000FF">* F02 View and Field</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_PATHS D       .</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPPGM</font>
+<font color ="#0000FF">*001</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

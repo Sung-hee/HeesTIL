@@ -1,0 +1,247 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPPG0010_02_TOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPPG0010_02_TOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPPG0010_02_TOP</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Include ZPPG0010_02_TOP                                   Report ZPPG0010_02</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+TABLES : sscrfields.
+
+DATA: gv_file  LIKE rlgrap-filename.
+
+DATA : gv_okcode TYPE sy-ucomm.
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* ALV 관련 변수 선언</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DATA : go_doc_cont TYPE REF TO cl_gui_docking_container,
+       go_grid     TYPE REF TO cl_gui_alv_grid,
+       gs_layo     TYPE lvc_s_layo,
+       gt_fcat     TYPE lvc_t_fcat,
+       gs_fcat     TYPE lvc_s_fcat.
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* Field symbols</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FIELD-SYMBOLS : &lt;fs&gt; TYPE any.
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* Type : 엑셀 양식과 동일한 구조</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+TYPES : BEGIN OF t_xlsx,
+
+          matnr      LIKE    mara-matnr,
+
+          maktx      LIKE makt-maktx  , "Material Description
+          mtart      LIKE mara-mtart  , "Material Type
+          werks      LIKE marc-werks  , "Plant
+          lgort      LIKE mard-lgort  , "Storage Location
+          meins      LIKE mara-meins  , "Base Unit of Measure
+          matkl      LIKE mara-matkl  ,  "Material Group
+          spart      LIKE mara-spart  ,  "Division
+          bismt      LIKE mara-bismt  ,  "Old Material Number
+<font color ="#0000FF">*          nmatnr     LIKE mara-nmatnr  , "Naked Part No 비표준 확장필드 삭제</font>
+          brgew      LIKE mara-brgew  ,  "Gross Weight
+          ntgew      LIKE mara-ntgew  ,  "Net Weight
+          gewei      LIKE mara-gewei  ,  "Weight unit
+          klart      LIKE rmclf-klart  , "clss Type
+          class      LIKE rmclf-class  , "Class
+          magrv      LIKE mara-magrv  , "Matl grp pack.matls
+          vhart      LIKE mara-vhart  , "Packaging mat. Type
+          mvgr1      LIKE mvke-mvgr1  , "Material group 1
+          mvgr2      LIKE mvke-mvgr2,
+          mvgr3      LIKE mvke-mvgr3,
+          mvgr4      LIKE mvke-mvgr4,
+          mvgr5      LIKE mvke-mvgr5,
+          raube      LIKE mara-raube  , "Storage Conditions
+
+          usequ      LIKE marc-usequ  , " Quota arrangement usage
+          xchpf      LIKE marc-xchpf,
+          kordb      LIKE marc-kordb,
+          lgfsb      LIKE marc-lgfsb, "Storage loc. for EP.
+
+          bstma      LIKE marc-bstma,
+          sobsl      LIKE marc-sobsl,
+          plifz      LIKE marc-plifz,
+<font color ="#0000FF">*          endind     LIKE marc-endind, 비표준 확장필드 삭제</font>
+          ssqss      LIKE marc-ssqss,
+          qzgtp      LIKE marc-qzgtp,
+
+          lgpbe      LIKE mard-lgpbe,
+          art        LIKE qmat-art,
+          aktiv      LIKE qmat-aktiv,
+          bklas      LIKE mbew-bklas,
+          ncost      LIKE marc-ncost,
+
+          dismm      LIKE    marc-dismm,    "MRP Type
+          dispo      LIKE    marc-dispo,      "MRP Controller
+          sbdkz      LIKE    marc-sbdkz,     " Individual/c
+          mtpos      LIKE    mvke-mtpos,       "Item category group
+          dzeit      LIKE      marc-dzeit,       "In-house production time
+          fabkz      LIKE    marc-fabkz,       "JIT delivery sched.
+          lgpro      LIKE    marc-lgpro,       "Prod. stor. Location(ALABAMA 추가 JDH-2016.01.11)
+          value_char LIKE    bapi1003_alloc_values_char-value_char.
+
+TYPES : END OF t_xlsx .
+
+
+<font color ="#0000FF">*----------------------------------------------</font>
+<font color ="#0000FF">* 200 스키린 용 Type 정의</font>
+<font color ="#0000FF">*----------------------------------------------</font>
+
+DATA : gv_mtart TYPE zppg0010_02t-mtart,
+       gv_werks TYPE zppg0010_02t-werks.
+
+
+<font color ="#0000FF">*----------------------------------------------</font>
+<font color ="#0000FF">*2.Template  200번 화면 데이타 ,TYPE 정의</font>
+<font color ="#0000FF">*----------------------------------------------</font>
+
+<font color ="#0000FF">*Basic Data1</font>
+DATA : BEGIN OF gt_i , "OCCURS 0,
+
+         mtpos_mara    LIKE mara-mtpos_mara,  "GenItemCatGroup
+         mbrsh         LIKE mara-mbrsh,       "Industry Sector
+
+<font color ="#0000FF">*Sales1</font>
+         vrkme         LIKE  mvke-vrkme,   "Sales unit
+         aland         LIKE  mlan-aland,   "Country
+         taxm1         LIKE  mlan-taxm1,   "TAX Classicfication
+         dwerk         LIKE  mvke-dwerk, "Delivering Plant
+<font color ="#0000FF">*Purchasing</font>
+         ekgrp         LIKE marc-ekgrp, "Purchasing Group
+<font color ="#0000FF">*MRP1</font>
+         disgr         LIKE marc-disgr, "  MRP Group
+<font color ="#0000FF">*DISMM LIKE MARC-DISMM, "  MRP Type</font>
+<font color ="#0000FF">*DISPO LIKE MARC-DISPO, "  MRP Controller</font>
+         disls         LIKE marc-disls, "  Lot size
+<font color ="#0000FF">*MRP3</font>
+         perkz         LIKE marc-perkz, "  Period Indicator
+         strgr         LIKE marc-strgr, "  Strategy group
+         mtvfp         LIKE marc-mtvfp, "  Availability check
+<font color ="#0000FF">*Quality     management</font>
+         qmpur         LIKE mara-qmpur, "  QM proc. active
+
+<font color ="#0000FF">*Accouting 1</font>
+         mlmaa         LIKE mbew-mlmaa, "  ML.act.
+         mlast         LIKE mbew-mlast, "  Price Determ.
+<font color ="#0000FF">*Sales2</font>
+         kondm         LIKE mvke-kondm, "  Material pricing grp
+         ktgrm         LIKE mvke-ktgrm, "  Acct assignment grp
+<font color ="#0000FF">*MTPOS LIKE MVKE-MTPOS, "  Item category group</font>
+<font color ="#0000FF">*MRP2     , "</font>
+         beskz         LIKE marc-beskz, "  Procurement type
+         fhori         LIKE marc-fhori, "  SchedMargin key
+<font color ="#0000FF">*MRP4</font>
+         altsl         LIKE marc-altsl, "  Selection method
+<font color ="#0000FF">*SBDKZ LIKE MARC-SBDKZ, "  Individual/coll.</font>
+         sauft         LIKE marc-sauft, "Repetitive mfg(REM)
+         sfepr         LIKE marc-sfepr, "  REM profile
+         kzbed         LIKE marc-kzbed,  "Indicator for Requirements Grouping
+<font color ="#0000FF">*Costing1</font>
+         ekalr         LIKE mbew-ekalr, "  With Qty Structure
+         hkmat         LIKE mbew-hkmat, "  Material Origin
+         prctr         LIKE marc-prctr, "  Profit Center
+         losgr         LIKE marc-losgr, "Lot Size for Product Costing
+<font color ="#0000FF">*Sales General</font>
+         tragr         LIKE mara-tragr, "  Trans. Grp
+         ladgr         LIKE marc-ladgr, "  LoadingGrp
+
+         basic_view, "*   Basic Data
+         sales_view,"* Sales Data
+         purchase_view,"* Purchasing Data
+         mrp_view,"* MRP Dtata
+         pnst_view,"* General Plant / Storage Data
+         quality_view,"* Quality Data
+         anc_view,"* Accounting/Costing Data
+
+       END OF  gt_i.
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* GT_DATA용 TYPE 정의</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+TYPES : BEGIN OF t_data.
+TYPES : stats TYPE c LENGTH 4,   " Signal.
+        remsg TYPE bapi_msg.     " Return MSG.
+    INCLUDE TYPE t_xlsx.
+    INCLUDE STRUCTURE gt_i.
+TYPES : END OF t_data .
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* IT & STRUCTURE 인터널 테이블 선언</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DATA: gt_data TYPE t_data         OCCURS 0 WITH HEADER LINE,
+      gt_xlsx TYPE t_xlsx         OCCURS 0 WITH HEADER LINE,
+      gt_xstb LIKE alsmex_tabline OCCURS 0 WITH HEADER LINE.
+
+DATA: gs_data   TYPE t_data.
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* zppg0010_02t 조회용 Data 선언</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+" Without Header
+DATA : gt_0010t TYPE TABLE OF zppg0010_02t.
+<font color ="#0000FF">*DATA : gs_0010t TYPE zppg0010_02t. 아래처럼해도되고 이렇게해도 된다</font>
+DATA : gs_0010t LIKE LINE OF gt_0010t.
+
+
+
+" With Header
+<font color ="#0000FF">*DATA: gt_0010t TYPE TABLE OF zppg0010_02t WITH HEADER LINE.</font>
+" With Header
+<font color ="#0000FF">*DATA: gt_0010t TYPE zppg0010_02t OCCURS 0.</font>
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 1000번 셀렉션 스크린</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-s01.
+PARAMETERS : p_paths TYPE rlgrap-filename
+                     VISIBLE LENGTH 50 MODIF ID u "파일선택
+                     DEFAULT 'C:\'.
+SELECTION-SCREEN END OF BLOCK b1.
+
+SELECTION-SCREEN FUNCTION KEY 1.
+SELECTION-SCREEN FUNCTION KEY 2. "1000 스크린에 임의의 버튼 FC 은 5개까지 실행버튼 제외"
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* AT SELECTION-SCREEN</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+<font color ="#0000FF">* 파일찾기 F4</font>
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_paths.
+  PERFORM get_file USING 'O' p_paths.
+
+<font color ="#0000FF">* 1000번 스크린 기능 버튼(1~5까지 가능)</font>
+AT SELECTION-SCREEN.
+  CASE sscrfields-ucomm.
+    WHEN 'FC01'.
+      PERFORM download_templete.
+    WHEN 'FC02'.
+<font color ="#0000FF">*      CLEAR : gv_mtart, gv_werks, gt_i.</font>
+      PERFORM init_200_dyn.
+      CALL SCREEN '0200'.
+  ENDCASE.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

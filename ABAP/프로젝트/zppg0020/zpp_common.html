@@ -1,0 +1,323 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPP_COMMON</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPP_COMMON</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPP_COMMON</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPP_COMMON</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZSTD_COMMON</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+TYPE-POOLS : slis.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   DATA                                                             &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+DATA : gt_events TYPE slis_t_event,
+       gt_list_top_of_page      TYPE slis_t_listheader,
+       gt_fieldcat              TYPE slis_t_fieldcat_alv,
+       gt_detailcat             TYPE slis_t_fieldcat_alv,
+       gt_field                 TYPE slis_t_fieldcat_alv,
+       gt_detail                TYPE slis_t_fieldcat_alv,
+       gt_sort                  TYPE slis_t_sortinfo_alv,
+       gt_color                 TYPE slis_t_specialcol_alv,
+       gt_event_exit            TYPE slis_t_event_exit,
+       gt_excluding             TYPE slis_t_extab WITH HEADER LINE.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   STRUCTURE                                                        &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+DATA : gs_layout TYPE slis_layout_alv,
+       gs_exit_caused_by_user   TYPE slis_exit_by_user,
+       gs_variant               TYPE disvariant,
+       gs_fieldcat_ln           TYPE slis_fieldcat_alv,
+       gs_detailcat             TYPE slis_fieldcat_alv,
+       gs_sort                  TYPE slis_sortinfo_alv,
+       gs_color                 TYPE slis_specialcol_alv,
+       gs_event_exit            TYPE slis_event_exit,
+       gs_keyinfo               TYPE slis_keyinfo_alv,
+       g_hide_alv               TYPE slis_sel_hide_alv.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   GENERAL VARIABLES                                                &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+DATA : g_exit_caused_by_caller TYPE c,
+       g_save                   TYPE c,
+       g_repid                  TYPE sy-repid,
+       g_program                LIKE sy-repid..
+
+DATA: variante LIKE disvariant,
+      def_variante    LIKE disvariant,
+      variant_exit(1) TYPE c,
+      g_alv_title     TYPE lvc_title.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   STRUCTURE RETRIEVE                                               &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+DATA: BEGIN OF gt_struct OCCURS 0,
+        seqno      TYPE i,      " 순서
+        title(20),              " 내역
+        charno(02) TYPE n,      " 필드길이
+        sample(100),            " 예
+      END OF gt_struct.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&  CONSTANTS                                                         &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+CONSTANTS : c_status_set TYPE slis_formname VALUE 'PF_STATUS_SET',
+            c_user_command    TYPE slis_formname VALUE 'USER_COMMAND',
+            c_detail_command  TYPE slis_formname VALUE 'DETAIL_COMMAND',
+            c_top_of_page     TYPE slis_formname VALUE 'TOP_OF_PAGE',
+            c_top_of_list     TYPE slis_formname VALUE 'TOP_OF_LIST',
+            c_end_of_list     TYPE slis_formname VALUE 'END_OF_LIST',
+            c_event_exit      TYPE slis_formname VALUE 'EVENT_EXIT'.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   FORM  F4_FOR_VARIANT : FORMAT SAVING                             &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM f4_for_variant USING p_vari.
+  gs_variant = sy-repid.
+  CALL FUNCTION 'REUSE_ALV_VARIANT_F4'
+       EXPORTING
+            is_variant          = gs_variant
+            i_save              = 'A'
+       IMPORTING
+            e_exit              = variant_exit
+            es_variant          = def_variante
+       EXCEPTIONS
+            not_found = 2.
+  IF sy-subrc = 2.
+    MESSAGE ID sy-msgid TYPE 'S' NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ELSE.
+    IF variant_exit = space.
+      p_vari = def_variante-variant.
+    ENDIF.
+  ENDIF.
+
+ENDFORM. " f4_for_variant
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*   FORM FORM_SETTING : ALV EXECUTING-STATE NAME SETTING              &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM form_setting USING p_com p_form.
+
+<font color ="#0000FF">*&===&gt; 해당 FORM발췌</font>
+  DATA : ls_event TYPE slis_alv_event.
+
+  READ TABLE gt_events WITH KEY name = p_com INTO ls_event.
+
+<font color ="#0000FF">*&===&gt; FORM 생성</font>
+  IF   sy-subrc EQ 0.
+    MOVE   p_form    TO   ls_event-form.
+    MODIFY gt_events FROM ls_event INDEX sy-tabix.
+  ENDIF.
+
+ENDFORM. "form_setting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&  FORM HEADER_SETTING : ALV HEADER SETTING PROCEDURE                &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM header_setting USING p_typ p_key p_info.
+
+<font color ="#0000FF">*&===&gt; HEADER SETTING</font>
+  DATA  : ls_line TYPE slis_listheader.
+  CLEAR : ls_line.
+
+  MOVE   p_typ   TO ls_line-typ.
+  MOVE   p_key   TO ls_line-key.
+  MOVE   p_info  TO ls_line-info.
+  APPEND ls_line TO gt_list_top_of_page.
+
+ENDFORM. "header_setting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&  FORM FIELD_SETTING : ALV FIELD SETTING PROCEDURE                  &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM field_setting USING p_gub p_fname p_con.
+
+<font color ="#0000FF">*&===&gt; FIELD ATTRIBUTE READING</font>
+  IF p_gub =  'S'.
+    CLEAR : gs_fieldcat_ln.
+    READ TABLE gt_field INTO gs_fieldcat_ln WITH KEY fieldname = p_fname.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*&===&gt; ATTRIBUTE MOVE</font>
+  DATA : l_col(40).
+  FIELD-SYMBOLS &lt;fs&gt;.
+  CONCATENATE 'GS_FIELDCAT_LN-' p_fname  INTO l_col.
+  ASSIGN      (l_col)         TO       &lt;fs&gt;.
+  MOVE         p_con          TO       &lt;fs&gt;.
+
+<font color ="#0000FF">*&===&gt; DATA APPEND</font>
+  CHECK p_gub = 'E'.
+
+  IF gs_fieldcat_ln-datatype = 'CURR' AND gs_fieldcat_ln-cfieldname = ' '.
+    gs_fieldcat_ln-currency  = 'KRW'.
+  ENDIF.
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   DOWNLOAD : ALV DATA -&gt; 숫자값 정상화                             &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+  IF gs_fieldcat_ln-datatype = 'CURR' AND gs_fieldcat_ln-cfieldname = 'CURKS'.
+    gs_fieldcat_ln-currency  = 'KRW'.
+  ENDIF.
+
+  APPEND gs_fieldcat_ln TO gt_fieldcat.
+
+ENDFORM. "field_setting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   FORM DETAIL-SETTING : ALV FIELD SETTING                         &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM detail_setting USING p_gub p_fname p_con.
+
+<font color ="#0000FF">*&===&gt; FIELD ATTRIBUTE READING</font>
+  IF p_gub =  'S'.
+    CLEAR : gs_detailcat.
+    READ TABLE gt_detail INTO gs_detailcat WITH KEY fieldname = p_fname.
+    EXIT.
+  ENDIF.
+
+<font color ="#0000FF">*&===&gt; ATTRIBUTE MOVE</font>
+  DATA : l_col(40).
+  FIELD-SYMBOLS &lt;fs&gt;.
+  CONCATENATE 'GS_DETAILCAT-' p_fname  INTO l_col.
+  ASSIGN      (l_col)         TO       &lt;fs&gt;.
+  MOVE         p_con          TO       &lt;fs&gt;.
+
+<font color ="#0000FF">*&===&gt; DATA APPEND</font>
+  CHECK p_gub = 'E'.
+  IF gs_detailcat-datatype = 'CURR' AND gs_detailcat-cfieldname = ' '.
+    gs_detailcat-currency  = 'KRW'.
+  ENDIF.
+
+  APPEND gs_detailcat TO gt_detailcat.
+
+ENDFORM. "detail_setting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   FORM FIELD_SORTING : ALV SORTING PROCEDURE                       &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM field_sorting USING p_gub p_fname p_con.
+
+<font color ="#0000FF">*&===&gt; ATTRIBUTE MOVE</font>
+  DATA l_col(40).
+  FIELD-SYMBOLS &lt;fs&gt;.
+  CONCATENATE 'GS_SORT-' p_fname  INTO l_col.
+  ASSIGN      (l_col)         TO       &lt;fs&gt;.
+  MOVE         p_con          TO       &lt;fs&gt;.
+
+<font color ="#0000FF">*&===&gt; DATA APPEND</font>
+  CHECK  p_gub = 'E'.
+  APPEND gs_sort TO gt_sort.
+
+ENDFORM. "field_sorting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   FORM EVENT_EXIT_SETTING : ALV SORTING PROCEDURE                  &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM event_exit_setting USING p_ucomm LIKE sy-ucomm
+                                 p_before
+                                 p_after.
+  CLEAR: gs_event_exit.
+
+<font color ="#0000FF">*&===&gt; ATTRIBUTE MOVE</font>
+  MOVE p_ucomm  TO gs_event_exit-ucomm.
+  MOVE p_before TO gs_event_exit-before.
+  MOVE p_after  TO gs_event_exit-after.
+
+<font color ="#0000FF">*&===&gt; DATA APPEND</font>
+  APPEND gs_event_exit TO gt_event_exit.
+
+ENDFORM. "event_exit_setting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   FORM COLOR_SETTING : ALV SORTING PROCEDURE                       &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM color_setting USING p_fname p_color p_key p_int.
+
+  CLEAR: gs_color.
+
+<font color ="#0000FF">*&===&gt; ATTRIBUTE MOVE</font>
+  MOVE p_fname TO gs_color-fieldname.
+  MOVE p_color TO gs_color-color-col.
+  MOVE p_key   TO gs_color-nokeycol.
+  MOVE p_int   TO gs_color-color-int.
+
+<font color ="#0000FF">*&===&gt; DATA APPEND</font>
+  APPEND gs_color TO gt_color.
+
+ENDFORM. "color_setting
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&   FORM SETTING_STRUCTURE                                           &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM setting_structure.
+  CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'
+       EXPORTING
+            i_program_name     = g_program
+            i_internal_tabname = 'GT_STRUCT'
+            i_inclname         = g_program
+       CHANGING
+            ct_fieldcat        = gt_field[].
+  PERFORM  field_setting USING:
+          'S'   'SEQNO'       ' '                ,
+          ' '   'SELTEXT_S'   '순서'             ,
+          ' '   'COL_POS'     '01'               ,
+          ' '   'OUTPUTLEN'   '04'               ,
+          'E'   'DDICTXT'     'S'                ,
+
+          'S'   'TITLE'       ' '                ,
+          ' '   'SELTEXT_S'   '내    용'         ,
+          ' '   'COL_POS'     '02'               ,
+          ' '   'OUTPUTLEN'   '20'               ,
+          'E'   'DDICTXT'     'S'                ,
+
+          'S'   'CHARNO'      ' '                ,
+          ' '   'SELTEXT_S'   '길이'             ,
+          ' '   'COL_POS'     '03'               ,
+          ' '   'OUTPUTLEN'   '04'               ,
+          'E'   'DDICTXT'     'S'                ,
+
+          'S'   'SAMPLE'      ' '                ,
+          ' '   'SELTEXT_S'   'Sample'           ,
+          ' '   'COL_POS'     '04'               ,
+          ' '   'OUTPUTLEN'   '99'               ,
+          'E'   'DDICTXT'     'S'                .
+
+ENDFORM. "SETTING_STRUCTURE
+
+<font color ="#0000FF">*&====================================================================&*</font>
+<font color ="#0000FF">*&    FORM DISPLAY_STRUCTURE                                          &*</font>
+<font color ="#0000FF">*&====================================================================&*</font>
+FORM display_structure.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+     EXPORTING
+        i_callback_program       = g_program
+        is_layout                = gs_layout
+        i_save                   = 'A'
+        is_variant               = gs_variant
+        it_events                = gt_events[]
+        it_fieldcat              = gt_fieldcat[]
+     IMPORTING
+        e_exit_caused_by_caller = g_exit_caused_by_caller
+        es_exit_caused_by_user  = gs_exit_caused_by_user
+     TABLES
+        t_outtab                = gt_struct.
+
+ENDFORM. " DISPLAY_STRUCTURE
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

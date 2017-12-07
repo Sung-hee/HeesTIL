@@ -1,0 +1,429 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>LZFG000TOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: LZFG000TOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  sjdfklasdfj</b></font>
+<hr>
+<pre width="100">
+FUNCTION-POOL ZFG000.                       "MESSAGE-ID ..
+
+<font color ="#0000FF">* INCLUDE LZFG000D...                        " Local class definition</font>
+
+include <a href ="zcag0000_f01.html">ZCAG0000_F01</a>.
+
+TYPE-POOLS: CPCDT,
+            CPSC,
+            CZCL,
+            CMCL,
+            CFCL,
+            CQCL.
+
+
+DATA: G_MSG_DUMMY       TYPE C.
+
+
+CONSTANTS:
+         BEGIN OF CP_CONST,
+
+<font color ="#0000FF">*            origin of operation</font>
+           ORIGIN_OPR          VALUE '0',  "operation of actual task
+           ORIGIN_REF_OPR      VALUE '1',  "operation of reference
+           ORIGIN_REFERENCE    VALUE '2',  "reference itself
+           ORIGIN_WORKCENTER   VALUE '3',  "work center task
+           ORIGIN_SUB_OPR      VALUE '4',  "suboperation
+           ORIGIN_REF_SUB_OPR  VALUE '5',  "suboperation of reference
+
+<font color ="#0000FF">*            work center task</font>
+           FLG_REF_TSK         VALUE '0',  "ref. set of operations
+           FLG_WCENTER_TSK     VALUE '1',  "work center task
+
+<font color ="#0000FF">*            type of cumulation for work center task</font>
+           NO_CUM            VALUE '0',   "no cumulation
+           CUM_RTG_ORD       VALUE '1',   "cum. in routing and order
+           CUM_ORD           VALUE '2',   "cum. only in order
+
+<font color ="#0000FF">*            task types</font>
+           PLNTY_MR            VALUE '2', "recipe
+           PLNTY_RGH           VALUE '3', "general planning profile
+           PLNTY_MUL           VALUE 'M', "reference rate routing
+           PLNTY_NOR           VALUE 'N', "routing
+           PLNTY_REP           VALUE 'R', "rate routing
+           PLNTY_STD           VALUE 'S', "reference set of operations
+           PLNTY_SNET          VALUE '0', "standard network
+           PLNTY_ONET          VALUE '1', "object related network
+           PLNTY_FAM           VALUE 'Q', "inspection plan
+           PLNTY_ANL           VALUE 'A', "general maint. task list
+           PLNTY_EQUI          VALUE 'E', "equipment task list
+           PLNTY_TPL           VALUE 'T', "task list funct. location
+
+<font color ="#0000FF">*            sequence types</font>
+           KZ_STA           VALUE '0',       "standard sequence
+           KZ_PAR           VALUE '1',       "parallel sequence
+           KZ_ALT           VALUE '2',       "alternative sequence
+
+<font color ="#0000FF">*            key for standard sequence</font>
+           SEQ_STD(6)       VALUE '000000',  "standard sequence
+
+<font color ="#0000FF">*            production resources / tools types</font>
+           PRTTY_MAT        VALUE 'M',
+           PRTTY_CHA        VALUE 'C',
+           PRTTY_EQUI       VALUE 'E',
+           PRTTY_FLOC       VALUE 'T',
+           PRTTY_DOC        VALUE 'D',
+           PRTTY_OTH        VALUE 'S',
+
+           PRT_OBJTY        TYPE CR_OBJTY VALUE 'FH',
+
+<font color ="#0000FF">***********************************************************************</font>
+<font color ="#0000FF">*            types for numerical conversion                           *</font>
+<font color ="#0000FF">***********************************************************************</font>
+
+           PLNNR_NUM(8)  TYPE N VALUE 99999999, "max. plan group
+           PLNAL_NUM(2)  TYPE N VALUE 99,       "max. plan in group
+           PLNAL_MIN(2)  TYPE N VALUE 01,       "min. plan in group
+           PLNFL_NUM(6)  TYPE N VALUE 999999,   "max. seq. number
+           PZLFH_NUM(8)  TYPE N VALUE 99999999, "max. prt. number
+           VORNR_MAX(4)  TYPE N VALUE 9999,     "max. opr. number
+           VORNR_MIN(4)  TYPE N VALUE 0000,     "min. opr. number
+
+           VORNR_STEP(4) TYPE N VALUE 10,       "default step
+
+<font color ="#0000FF">*            lotsize values</font>
+           LOTSIZE_MAX   LIKE PLKO-LOSBS VALUE 99999999,
+           LOTSIZE_MIN   LIKE PLKO-LOSVN VALUE 0,
+
+<font color ="#0000FF">*            costing relevancy indicatory "n_729661</font>
+           NO_COSTING_DATA VALUE '/',                       "n_729661
+
+         END   OF CP_CONST,
+
+<font color ="#0000FF">*          constants for workbench classes</font>
+         BEGIN OF WORKAREA_CLASS,
+           MANUFACTURING  VALUE 'P',          "manufacturing
+           SERIAL_PROD    VALUE 'R',          "serial production
+           MAINTENANCE    VALUE 'I',          "plant maintenance
+           QUALITY_CHECK  VALUE 'Q',          "QSS
+           PROJECTS       VALUE 'N',          "standard nets
+           RECIPE         VALUE 'C',          "recipes (CAPICE)
+           ALL            VALUE '*',          "all
+         END   OF WORKAREA_CLASS,
+
+<font color ="#0000FF">*          control keys</font>
+         BEGIN OF CONTROLKEY,
+           OBL LIKE T430-LIEF VALUE '+',
+           OPT LIKE T430-LIEF VALUE 'X',
+         END OF CONTROLKEY,
+
+<font color ="#0000FF">*          relationship key</font>
+         BEGIN OF SEQ_RELATIONSHIP_KEY,
+           START LIKE TCA50-TSCHL VALUE '1',
+           END   LIKE TCA50-TSCHL VALUE '2',
+         END   OF SEQ_RELATIONSHIP_KEY,
+
+<font color ="#0000FF">*          alignment key</font>
+         BEGIN OF SEQ_ALIGNMENT_KEY,
+           EARLIEST LIKE TCA52-AUSCHL VALUE '1',
+           LATEST   LIKE TCA52-AUSCHL VALUE '2',
+         END   OF SEQ_ALIGNMENT_KEY,
+
+<font color ="#0000FF">*         object type of a planned change for PPM</font>
+        CHTR_ROUTING_OBJECT_TYPE LIKE TCHTR-OBJECT_TYPE
+                                 VALUE 'ROUTING'.
+
+
+
+
+
+
+
+
+
+
+
+
+
+CONSTANTS:
+
+  BEGIN OF CONST,
+
+<font color ="#0000FF">*     general constants</font>
+    FLG_YES       TYPE C           VALUE 'X',
+    FLG_NO        TYPE C           VALUE ' ',
+    FLG_ALL       TYPE C           VALUE '*',
+    FLG_SWITCH    TYPE C           VALUE 'X',
+    FLG_TRUE      TYPE C           VALUE '1',
+    FLG_FALSE     TYPE C           VALUE '0',
+    CHR_N         TYPE C           VALUE 'N',               " n_1698279
+
+<font color ="#0000FF">*     text processing</font>
+    TEXT_UPDATE   TYPE C           VALUE 'U',
+    TEXT_INSERT   TYPE C           VALUE 'I',
+    TEXT_DELETE   TYPE C           VALUE 'D',
+    TEXT_MODIFY   TYPE C           VALUE 'M',
+    TEXT_APPEND   TYPE C           VALUE 'A',
+    TEXT_REPLACE  TYPE C           VALUE 'R',
+
+<font color ="#0000FF">*     activity types</font>
+    AKTYP_DISPLAY LIKE TC01-AKTYP  VALUE 'A',  "display
+    AKTYP_COPY    LIKE TC01-AKTYP  VALUE 'K',  "copy
+    AKTYP_CREATE  LIKE TC01-AKTYP  VALUE 'H',  "create
+    AKTYP_CHANGE  LIKE TC01-AKTYP  VALUE 'V',  "change
+    AKTYP_DELETE  LIKE TC01-AKTYP  VALUE 'L',  "delete
+    AKTYP_CHECK   LIKE TC01-AKTYP  VALUE 'C',  "check
+    AKTYP_INPUT   TYPE TC01-AKTYP  VALUE 'E',  "input facility
+    AKTYP_SHOW    TYPE TC01-AKTYP  VALUE 'S',  "show text processing
+
+<font color ="#0000FF">*     lot sizes</font>
+    LOTSIZE_MAX   LIKE PLKO-LOSBS  VALUE 99999999,
+    LOTSIZE_MIN   LIKE PLKO-LOSVN  VALUE 0,
+
+<font color ="#0000FF">*     long text</font>
+    LONG_TEXT     TYPE C           VALUE 'L',
+
+<font color ="#0000FF">*     numerical values</font>
+    NUMERIC(10)   TYPE C VALUE '0123456789',
+
+<font color ="#0000FF">*     TAB-Strips</font>
+    TSK_TAB       LIKE FELD-NAME   VALUE 'G_TSK_TAB',
+    OPR_TAB       LIKE FELD-NAME   VALUE 'G_OPR_TAB',
+    SUO_TAB       LIKE FELD-NAME   VALUE 'G_SUO_TAB',
+    BOM_TAB       LIKE FELD-NAME   VALUE 'G_BOM_TAB',
+    ITM_TAB       LIKE FELD-NAME   VALUE 'G_ITM_TAB',
+    SUI_TAB       LIKE FELD-NAME   VALUE 'G_SUI_TAB',
+    PRT_TAB       LIKE FELD-NAME   VALUE 'G_PRT_TAB',
+    PAC_TAB       LIKE FELD-NAME   VALUE 'G_PAC_TAB',
+    MST_TAB       LIKE FELD-NAME   VALUE 'G_MST_TAB',
+    CHA_TAB       LIKE FELD-NAME   VALUE 'G_CHA_TAB',
+    CLA_TAB       LIKE FELD-NAME   VALUE 'G_CLA_TAB',
+    ODP_TAB       LIKE FELD-NAME   VALUE 'G_ODP_TAB',
+    ECN_TAB       LIKE FELD-NAME   VALUE 'G_ECN_TAB',
+
+<font color ="#0000FF">*     print option</font>
+    PRINT_LDPS(4) TYPE C VALUE 'LDPS',
+
+<font color ="#0000FF">*     generic component allocation</font>
+    BGR_ALLOCATION LIKE STKO-STLAL VALUE '*',
+
+<font color ="#0000FF">*     EAI Filter</font>
+    EAI_FILTER     LIKE DRAW-DAPPL VALUE 'JT',
+
+<font color ="#0000FF">* Steuerschl�sse aus T430              "_n_777811</font>
+STEUS_OBL        VALUE '+',                                 "_n_777811
+INT_USE          VALUE 'X',                                 "_n_777811
+
+<font color ="#0000FF">* Verdichtungsart Standardaufgabe</font>
+CUM_RTG_ORD       VALUE '1',  "Verdichtung im Plan und im Auftrag
+CUM_ORD           VALUE '2',  "Verdichtung nur im Auftrag
+
+  END OF CONST,
+
+<font color ="#0000FF">*   root level of an exploded bill of material</font>
+  LEVEL_OF_ROOT LIKE PATH_ID-STUFE_K VALUE 0,
+
+<font color ="#0000FF">*   path of root</font>
+  PATH_OF_ROOT LIKE PATH_ID-KANTE_K VALUE 0,
+
+<font color ="#0000FF">*   activities for authority checks being defined in TACTZ</font>
+  BEGIN OF AUTHORITY,
+    CREATE        LIKE TACTZ-ACTVT VALUE '01',  " creating
+    CHANGE        LIKE TACTZ-ACTVT VALUE '02',  " changing
+    SHOW          LIKE TACTZ-ACTVT VALUE '03',  " showing
+    DELETE        LIKE TACTZ-ACTVT VALUE '06',  " deleting
+    NO_QM_DATA    TYPE C           VALUE 'Q',   " tsk opr QM data ch.
+  END   OF AUTHORITY,
+
+<font color ="#0000FF">*   message types</font>
+  BEGIN OF MESSAGE_TYPE,
+    ERROR         TYPE C           VALUE 'E',
+    WARNING       TYPE C           VALUE 'W',
+    INFO          TYPE C           VALUE 'I',
+    SUCCESS       TYPE C           VALUE 'S',
+    ABORT         TYPE C           VALUE 'A',
+  END   OF MESSAGE_TYPE,
+
+<font color ="#0000FF">*   material status</font>
+  BEGIN OF MATERIAL_STATUS,
+    WARNING       TYPE C           VALUE 'A',
+    ERROR         TYPE C           VALUE 'B',
+  END OF MATERIAL_STATUS,
+
+<font color ="#0000FF">*   date</font>
+  BEGIN OF DATE,
+    MIN_GRG       LIKE SY-DATUM    VALUE '19000101',
+    MAX_GRG       LIKE SY-DATUM    VALUE '99991231',
+  END   OF DATE,
+
+<font color ="#0000FF">*   parameters for ranges</font>
+  BEGIN OF SIGN,
+    INCLUDE(1)    TYPE C           VALUE 'I',
+    EXCLUDE(1)    TYPE C           VALUE 'E',
+  END OF SIGN,
+
+  BEGIN OF OPTION,
+    EQUAL(2)      TYPE C           VALUE 'EQ',
+    BETWEEN(2)    TYPE C           VALUE 'BT',
+  END OF OPTION,
+
+<font color ="#0000FF">*   locking modes</font>
+  BEGIN OF LOCK_MODE,
+    EXCLUSIVE_C   TYPE C           VALUE 'E',  "exclusive cumulating
+    SHARED        TYPE C           VALUE 'S',  "shared
+    EXCLUSIVE     TYPE C           VALUE 'X',  "exclus. not cumulating
+  END   OF LOCK_MODE,
+
+<font color ="#0000FF">*   workbench selection objects</font>
+  BEGIN OF SEL_OBJECT,
+    MBM           LIKE SCREEN-GROUP4 VALUE 'MBM',
+    BOM           LIKE SCREEN-GROUP4 VALUE 'BOM',
+    ITM           LIKE SCREEN-GROUP4 VALUE 'ITM',
+    MTK           LIKE SCREEN-GROUP4 VALUE 'MTK',
+    TSK           LIKE SCREEN-GROUP4 VALUE 'TSK',
+    SEQ           LIKE SCREEN-GROUP4 VALUE 'SEQ',
+    OPR           LIKE SCREEN-GROUP4 VALUE 'OPR',
+    SUO           LIKE SCREEN-GROUP4 VALUE 'SUO',
+  END   OF SEL_OBJECT,
+
+<font color ="#0000FF">*   handling of selection results</font>
+  BEGIN OF SEL_RESULT,
+    MNP    TYPE C   VALUE '1',   "mark new by previous
+    MNE    TYPE C   VALUE '2',   "mark new by ecn
+    ANP    TYPE C   VALUE '3',   "add new to previous
+    MPN    TYPE C   VALUE '4',   "mark previous by new
+    KCR    TYPE C   VALUE '5',   "keep current result
+  END   OF SEL_RESULT,
+
+<font color ="#0000FF">*   ecm object</font>
+  BEGIN OF ECM_OBJECT,
+    BOM           LIKE TCC03-AEOBJ VALUE '1',     "BOM
+    PLN           LIKE TCC03-AEOBJ VALUE '2',     "TSK
+  END   OF ECM_OBJECT,
+
+<font color ="#0000FF">*   constants for standard-lengths of columns and lines in texts</font>
+  BEGIN OF STANDARD_LENGTH,
+    COLUMNS(3)    TYPE C           VALUE '072',
+    LINES(3)      TYPE C           VALUE '040',
+  END OF STANDARD_LENGTH,
+
+<font color ="#0000FF">*   constants for classification types</font>
+  BEGIN OF CLASSIFICATION,
+    TSK(3)                         VALUE '018',
+    OPR(3)                         VALUE '018',
+    WORKCENTER(3)                  VALUE '019',
+    PRT(3)                         VALUE '009',
+  END OF CLASSIFICATION,
+
+<font color ="#0000FF">*   constants for object dependencies</font>
+  BEGIN OF ODP_OBJECT,
+    ITM            LIKE CUOB-KNTAB VALUE 'STPO',
+    SEQ            LIKE CUOB-KNTAB VALUE 'PLFLD',
+    OPR            LIKE CUOB-KNTAB VALUE 'PLPOD',
+    SUO            LIKE CUOB-KNTAB VALUE 'PLPOD',
+    PRT            LIKE CUOB-KNTAB VALUE 'PLFHD',
+  END   OF ODP_OBJECT,
+
+<font color ="#0000FF">*   identification</font>
+  BEGIN OF IDENT,
+    INTERNAL    TYPE C             VALUE 'I',
+    EXTERNAL    TYPE C             VALUE 'E',
+  END   OF IDENT,
+
+<font color ="#0000FF">*   constants for names of structures</font>
+  BEGIN OF STRUCTURE,
+    RC27M(5)                  VALUE 'RC27M',
+  END OF STRUCTURE,
+
+<font color ="#0000FF">*   constants for mass-change objects</font>
+  BEGIN OF MASS_OBJ,
+    ROUTING               TYPE MASSOBJTYP VALUE 'ROUT',
+    BOM                   TYPE MASSOBJTYP VALUE 'BOM',
+  END OF MASS_OBJ,
+
+<font color ="#0000FF">*   constants for names of defined BADIs</font>
+  BEGIN OF EWB_BADI,
+    EWB_SELECTION         LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'EWB_SELECTION',
+    BOM_UPDATE            LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'BOM_UPDATE',
+    CEWB_BOM_UPDATE       LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_BOM_UPDATE',
+    CEWB_BOM_CUS_FIELDS   LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_BOM_CUS_FIELDS',
+    CEWB_ITM_CUS_FIELDS   LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_ITM_CUS_FIELDS',
+    CEWB_TSK_UPDATE       LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_TSK_UPDATE',
+    CEWB_TSK_SCREENS      LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_TSK_SCREENS',
+    CEWB_TSK_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_TSK_MENU_INTERN',
+    CEWB_TSK_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_TSK_MENU_EXTERN',
+    CEWB_OPR_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_OPR_MENU_INTERN',
+    CEWB_OPR_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_OPR_MENU_EXTERN',
+    CEWB_COM_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_COM_MENU_INTERN',
+    CEWB_COM_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_COM_MENU_EXTERN',
+    CEWB_CHA_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_CHA_MENU_INTERN',
+    CEWB_CHA_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_CHA_MENU_EXTERN',
+    CEWB_MST_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_MST_MENU_INTERN',
+    CEWB_MST_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_MST_MENU_EXTERN',
+    CEWB_GEN_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_GEN_MENU_INTERN',
+    CEWB_GEN_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_GEN_MENU_EXTERN',
+    CEWB_ITM_MENU_INTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_ITM_MENU_INTERN',
+    CEWB_ITM_MENU_EXTERN  LIKE RSEXSCRN-EXIT_NAME
+                            VALUE 'CEWB_ITM_MENU_EXTERN',
+
+  END   OF EWB_BADI,
+
+<font color ="#0000FF">*   constants for names of tables</font>
+  BEGIN OF TABLE,
+    CRVM_A LIKE CDPOS-TABNAME VALUE 'CRVM_A',
+    CRVS_A LIKE CDPOS-TABNAME VALUE 'CRVS_A',
+    CRVE_A LIKE CDPOS-TABNAME VALUE 'CRVE_A',
+    CRVD_A LIKE CDPOS-TABNAME VALUE 'CRVD_A',
+    CRHD   LIKE CDPOS-TABNAME VALUE 'CRHD',
+    MAST   LIKE CDPOS-TABNAME VALUE 'MAST',
+    MAPL   LIKE CDPOS-TABNAME VALUE 'MAPL',
+    MKAL   LIKE CDPOS-TABNAME VALUE 'MKAL',
+    MLST   LIKE CDPOS-TABNAME VALUE 'MLST',
+    PLAS   LIKE CDPOS-TABNAME VALUE 'PLAS',
+    PLFH   LIKE CDPOS-TABNAME VALUE 'PLFH',
+    PLFHD  LIKE CDPOS-TABNAME VALUE 'PLFHD',
+    PLFL   LIKE CDPOS-TABNAME VALUE 'PLFL',
+    PLFLD  LIKE CUOB-KNTAB    VALUE 'PLFLD',
+    PLKO   LIKE CDPOS-TABNAME VALUE 'PLKO',
+    PLKZ   LIKE CDPOS-TABNAME VALUE 'PLKZ',
+    PLMK   LIKE CDPOS-TABNAME VALUE 'PLMK',
+    PLMW   LIKE CDPOS-TABNAME VALUE 'PLMW',
+    PLWP   LIKE CDPOS-TABNAME VALUE 'PLWP',
+    PLMZ   LIKE CDPOS-TABNAME VALUE 'PLMZ',
+    PLPO   LIKE CDPOS-TABNAME VALUE 'PLPO',
+    PLPOD  LIKE CUOB-KNTAB    VALUE 'PLPOD',
+    PLZU   LIKE CDPOS-TABNAME VALUE 'PLZU',
+    CUKB   LIKE CDPOS-TABNAME VALUE 'CUKB',
+    STAS   LIKE CDPOS-TABNAME VALUE 'STAS',
+    STKO   LIKE CDPOS-TABNAME VALUE 'STKO',
+    STPO   LIKE CDPOS-TABNAME VALUE 'STPO',
+    STPU   LIKE CDPOS-TABNAME VALUE 'STPU',
+    STZU   LIKE CDPOS-TABNAME VALUE 'STZU',
+  END OF TABLE.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZBOM03_01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZBOM03_01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  BOM Maintecne Program</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  ZBOM03_01</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+include <a href ="zbom03_01_top.html">ZBOM03_01_TOP</a>.    " global Data
+
+
+include <a href ="zpp_common.html">ZPP_COMMON</a>.
+include <a href ="zppc0030s01.html">ZPPC0030S01</a>.                            .    " Selection SCR
+include <a href ="zppc0030f01.html">ZPPC0030F01</a>.                            .    " Local Form
+
+AT SELECTION-SCREEN.
+  IF SSCRFIELDS-UCOMM = 'PUSH'.
+    PERFORM EXCEL_DOWNLOAD.
+  ENDIF.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR PA_FPATH.
+  PERFORM GET_FILE_PATH CHANGING PA_FPATH.
+
+START-OF-SELECTION.
+
+  PERFORM INPUT_CHECK_1.
+  PERFORM EXCEL_UPLOAD_INIT.
+  PERFORM EXCEL_DATA_CHECK.
+  PERFORM EXCEL_DATA_INIT.
+
+END-OF-SELECTION.
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 선택조건</font>
+<font color ="#0000FF">* 002 BDC Mode</font>
+<font color ="#0000FF">* 003 양식 다운로드</font>
+<font color ="#0000FF">* 004 @J2@ 엑셀양식 다운로드</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* PA_FPATH         파일경로</font>
+<font color ="#0000FF">* PA_MODE         BDC Mode</font>
+<font color ="#0000FF">* P_UPDATE         Update Mode</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPPM1</font>
+<font color ="#0000FF">*000   &</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* PA_FPATH         File Path</font>
+<font color ="#0000FF">* PA_MODE D       .</font>
+<font color ="#0000FF">* P_UPDATE D       .</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPPGM</font>
+<font color ="#0000FF">*000</font>
+<font color ="#0000FF">*001</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

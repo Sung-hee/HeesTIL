@@ -1,0 +1,70 @@
+*&---------------------------------------------------------------------*
+*& Report  ZBOM03_01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZBOM03_01_TOP                           .    " global Data
+
+
+include ZPP_COMMON.
+include ZPPC0030S01.                            .    " Selection SCR
+include ZPPC0030F01.                            .    " Local Form
+
+AT SELECTION-SCREEN.
+  IF SSCRFIELDS-UCOMM = 'PUSH'.
+    PERFORM EXCEL_DOWNLOAD.
+  ENDIF.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR PA_FPATH.
+  PERFORM GET_FILE_PATH CHANGING PA_FPATH.
+
+START-OF-SELECTION.
+
+  PERFORM INPUT_CHECK_1.
+  PERFORM EXCEL_UPLOAD_INIT.
+  PERFORM EXCEL_DATA_CHECK.
+  PERFORM EXCEL_DATA_INIT.
+
+END-OF-SELECTION.
+
+*Text elements
+*----------------------------------------------------------
+* 001 선택조건
+* 002 BDC Mode
+* 003 양식 다운로드
+* 004 @J2@ 엑셀양식 다운로드
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_FPATH         파일경로
+* PA_MODE         BDC Mode
+* P_UPDATE         Update Mode
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPPM1
+*000   &
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_FPATH         File Path
+* PA_MODE D       .
+* P_UPDATE D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPPGM
+*000
+*001
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

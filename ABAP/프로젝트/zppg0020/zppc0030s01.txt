@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPPC0030S01
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+
+PARAMETERS: PA_FPATH TYPE STRING .
+
+SELECTION-SCREEN SKIP 1.
+
+SELECTION-SCREEN BEGIN OF BLOCK B2 WITH FRAME TITLE TEXT-002.
+PARAMETERS : PA_MODE LIKE CTU_PARAMS-DISMODE
+                           OBLIGATORY DEFAULT 'N',
+             P_UPDATE LIKE CTU_PARAMS-UPDMODE OBLIGATORY DEFAULT 'S'.
+SELECTION-SCREEN END OF BLOCK B2.
+
+SELECTION-SCREEN END OF BLOCK B1 .
+
+SELECTION-SCREEN BEGIN OF BLOCK B3 WITH FRAME TITLE TEXT-003.
+
+SELECTION-SCREEN PUSHBUTTON 1(18) TEXT-t04 USER-COMMAND PUSH.
+SELECTION-SCREEN SKIP 1.
+
+SELECTION-SCREEN END OF BLOCK B3.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

@@ -1,0 +1,632 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPPG0000_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&  Include           ZPPG0000_F01
+*&---------------------------------------------------------------------*
+**BOM EXPL
+DATA : BEGIN OF GS_BOM_EXPL,
+      FTREL   LIKE   CSDATA-XFELD,
+      ALEKZ   LIKE   CSDATA-XFELD,
+      ALTVO   LIKE   CSDATA-XFELD,
+      AUFSW   LIKE   CSDATA-XFELD,
+      AUMGB   LIKE   CSDATA-XFELD,
+      AUMNG   LIKE   STKO-BMENG,
+      AUSKZ   LIKE   CSDATA-XFELD,
+      AMIND   LIKE   CSDATA-XFELD,
+      BAGRP   LIKE   MARA-MATNR,
+      BEIKZ   LIKE   STPO-BEIKZ,
+      BESSL   LIKE   CSDATA-XFELD,
+      BGIXO   LIKE   CSDATA-XFELD,
+      BREMS   LIKE   CSDATA-XFELD,
+      CAPID   LIKE   TC04-CAPID,
+      CHLST   LIKE   CSDATA-XFELD,
+      COSPR   LIKE   CSDATA-XFELD,
+      CUOBJ   LIKE   MARC-CUOBJ,
+      CUOVS   TYPE   IBVERSION,
+      CUOLS   LIKE   CSDATA-XFELD,
+      DATUV   LIKE   STKO-DATUV,
+      DELNL   LIKE   CSDATA-XFELD,
+      DRLDT   LIKE   CSDATA-XFELD,
+      EHNDL   LIKE   CSDATA-XFELD,
+      EMENG   LIKE   STKO-BMENG,
+      ERSKZ   LIKE   STPO-ERSKZ,
+      ERSSL   LIKE   CSDATA-XFELD,
+      FBSTP   LIKE   CSDATA-XFELD,
+      KNFBA   LIKE   CSDATA-XFELD,
+      KSBVO   LIKE   CSDATA-XFELD,
+      MBWLS   LIKE   CSDATA-XFELD,
+      MKTLS   LIKE   CSDATA-XFELD,
+      MDMPS   LIKE   CSDATA-XFELD,
+      MEHRS   LIKE   CSDATA-XFELD,
+      MKMAT   LIKE   CSDATA-XFELD,
+      MMAPS   LIKE   CSDATA-XFELD,
+      SALWW   LIKE   CSDATA-XFELD,
+      SPLWW   LIKE   CSDATA-XFELD,
+      MMORY   LIKE   CSDATA-XFELD,
+      MTNRV   LIKE   MARA-MATNR,
+
+
+      NLINK   LIKE   CSDATA-XFELD,
+      POSTP   LIKE   STPO-POSTP,
+      RNDKZ   LIKE   CSDATA-XFELD,
+      RVREL   LIKE   STPO-RVREL,
+      SANFR   LIKE   STPO-SANFE,
+      SANIN   LIKE   STPO-SANIN,
+      SANKA   LIKE   STPO-SANKA,
+      SANKO   LIKE   STPO-SANKO,
+      SANVS   LIKE   STPO-SANVS,
+      SCHGT   LIKE   STPO-SCHGT,
+      STKKZ   LIKE   STPO-STKKZ,
+      STLAL   LIKE   STKO-STLAL,
+      STLAN   LIKE   STZU-STLAN,
+      STPST   LIKE   STPOX-STUFE,
+      SVWVO   LIKE   CSDATA-XFELD,
+      WERKS   LIKE   MARC-WERKS,
+      NORVL   LIKE   CSDATA-XFELD,
+      MDNOT   LIKE   CSDATA-XFELD,
+      PANOT   LIKE   CSDATA-XFELD,
+      QVERW   LIKE   TMQ2-USEQU,
+      VERID   LIKE   MKAL-VERID,
+      VRSVO   LIKE   CSDATA-XFELD,
+
+        END OF GS_BOM_EXPL.
+*----------------------------------------------------------------------*
+* Common Macro
+*----------------------------------------------------------------------*
+DEFINE $APPEND_SELECTION_TABLE.
+ &1-SELNAME = &3.
+ &1-KIND    = &4.
+ &1-SIGN    = &5.
+ &1-OPTION  = &6.
+ &1-LOW     = &7.
+ &1-HIGH    = &8.
+ APPEND &1 TO &2.
+END-OF-DEFINITION.
+DEFINE $SET_ALV_EDIT_MODE.
+  CALL METHOD &1->SET_READY_FOR_INPUT( &2 ).
+END-OF-DEFINITION.
+DEFINE $EDIT_MASK.
+  CASE &3.
+    WHEN 'D'. "DATE
+      WRITE &1 USING EDIT MASK '____/__/__' TO &2.
+    WHEN 'T'. "TIME
+      WRITE &1 USING EDIT MASK '__:__:__' TO &2.
+
+  ENDCASE.
+END-OF-DEFINITION.
+DEFINE $SET_STYLE.
+  CLEAR: GS_CELLTAB.
+  CASE &2.
+    WHEN  'X'.
+      GS_CELLTAB-STYLE = CL_GUI_ALV_GRID=>MC_STYLE_DISABLED.
+      GS_CELLTAB-FIELDNAME = &1.        "
+
+    WHEN OTHERS.
+      GS_CELLTAB-STYLE = CL_GUI_ALV_GRID=>MC_STYLE_ENABLED.
+      GS_CELLTAB-FIELDNAME = &1.
+  ENDCASE.
+  INSERT GS_CELLTAB INTO TABLE <GF_CELLTAB>.
+
+END-OF-DEFINITION.
+
+DEFINE $ASSIGN_FIELD_VALUE.
+
+  ASSIGN (&1) TO <GF_FIELD>.
+  <GF_FIELD> = &2.
+
+END-OF-DEFINITION.
+DEFINE $SET_DEFAULT.
+
+  GV_COL_POS = GV_COL_POS + 1.
+
+  GS_FIELDCAT-COL_POS    = GV_COL_POS.
+  GS_FIELDCAT-FIELDNAME  = &1.
+  GS_FIELDCAT-REPTEXT    = &2.
+  GS_FIELDCAT-SCRTEXT_L  = &2.
+  GS_FIELDCAT-SCRTEXT_M  = &2.
+  GS_FIELDCAT-SCRTEXT_S  = &2.
+  APPEND GS_FIELDCAT TO FIELDCAT.
+
+END-OF-DEFINITION.
+
+DEFINE $SET_FIELDTEXT.
+  &1+0(4) = &2+0(4).
+  &1+5(2) = &2+4(2).
+END-OF-DEFINITION.
+
+DEFINE $SET_FIELDTEXT_DATE.
+  &1+0(2) = &2+4(2).
+  &1+3(2) = &2+6(2).
+END-OF-DEFINITION.
+
+DEFINE $SET_EDIT.
+  GS_FIELDCAT-EDIT =  'X'.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING EDIT WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+DEFINE $SET_COL_OPT.
+  GS_FIELDCAT-COL_OPT =  'X'.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING COL_OPT WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+
+DEFINE $SET_KEY.
+  GS_FIELDCAT-KEY =  'X'.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING KEY WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+
+DEFINE $SET_DO_SUM.
+  GS_FIELDCAT-DO_SUM =  'X'.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING DO_SUM WHERE
+  FIELDNAME = &1.
+
+END-OF-DEFINITION.
+DEFINE $SET_EMPHASIZE.
+  GS_FIELDCAT-EMPHASIZE =  &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING EMPHASIZE WHERE
+  FIELDNAME = &1.
+
+END-OF-DEFINITION.
+
+DEFINE $SET_NO_OUT.
+  GS_FIELDCAT-NO_OUT =  'X'.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING NO_OUT WHERE
+  FIELDNAME = &1.
+
+END-OF-DEFINITION.
+DEFINE $SET_NO_ZERO.
+  GS_FIELDCAT-NO_ZERO =  'X'.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING NO_ZERO WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+DEFINE $SET_JUST.
+  GS_FIELDCAT-JUST = &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING JUST WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+DEFINE $APPEND_EXCLUDE."
+  APPEND CL_GUI_ALV_GRID=>&1 TO GT_TOOLBAR.
+END-OF-DEFINITION.
+DEFINE $SET_OUTLEN.
+  GS_FIELDCAT-OUTPUTLEN = &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING OUTPUTLEN WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+DEFINE $SET_REF_FIELD.
+  GS_FIELDCAT-REF_FIELD =  &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING REF_FIELD WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+
+DEFINE  $SET_REF_TABLE.
+  GS_FIELDCAT-REF_TABLE =  &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING REF_TABLE WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+DEFINE  $SET_QFIELDNAME.
+  GS_FIELDCAT-QFIELDNAME =  &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING QFIELDNAME WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+DEFINE  $SET_CFIELDNAME.
+  GS_FIELDCAT-CFIELDNAME =  &2.
+  MODIFY FIELDCAT FROM GS_FIELDCAT TRANSPORTING CFIELDNAME WHERE
+  FIELDNAME = &1.
+END-OF-DEFINITION.
+*&---------------------------------------------------------------------*
+*&      Form  GET_WERKS_DESC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_IN      text
+*      -->PV_OUT     text
+*----------------------------------------------------------------------*
+FORM GET_WERKS_DESC USING PV_IN CHANGING PV_OUT.
+  CLEAR : PV_OUT.
+  SELECT SINGLE NAME1
+     INTO PV_OUT
+     FROM T001W
+    WHERE WERKS EQ PV_IN.
+ENDFORM.                    "GET_WERKS_DESC
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_WERKS_DESC_TABLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_IN      text
+*      -->PT_OUT     text
+*----------------------------------------------------------------------*
+FORM GET_WERKS_DESC_TABLE TABLES PT_IN PT_OUT.
+  DATA : LT_IN  TYPE TABLE OF T001W WITH HEADER LINE,
+         LT_OUT TYPE TABLE OF T001W WITH HEADER LINE.
+
+  CHECK PT_IN[] IS NOT INITIAL.
+  LOOP AT PT_IN.
+    MOVE-CORRESPONDING PT_IN TO LT_IN.
+    APPEND LT_IN.
+  ENDLOOP.
+
+  SELECT WERKS NAME1
+     INTO CORRESPONDING FIELDS OF TABLE LT_OUT
+     FROM T001W
+      FOR ALL ENTRIES IN LT_IN
+    WHERE WERKS EQ LT_IN-WERKS.
+
+  SORT LT_OUT BY WERKS.
+  REFRESH : PT_OUT.
+  LOOP AT LT_OUT.
+    CLEAR : PT_OUT.
+    MOVE-CORRESPONDING LT_OUT TO PT_OUT.
+    APPEND PT_OUT.
+  ENDLOOP.
+ENDFORM.                    "GET_WERKS_DESC_TABLE
+
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_MATNR_DESC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_IN      text
+*      -->PV_OUT     text
+*----------------------------------------------------------------------*
+FORM GET_MATNR_DESC USING PV_IN CHANGING PV_OUT.
+  CLEAR : PV_OUT.
+  SELECT SINGLE MAKTX
+    INTO PV_OUT
+    FROM MAKT
+   WHERE MATNR EQ PV_IN
+     AND SPRAS EQ SY-LANGU.
+
+ENDFORM. "get_matnr_desc
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_matnr_desc_table
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_IN      text
+*      -->PT_OUT     text
+*----------------------------------------------------------------------*
+FORM GET_MATNR_DESC_TABLE TABLES PT_IN PT_OUT.
+  DATA : LT_IN  TYPE TABLE OF MAKT WITH HEADER LINE,
+         LT_OUT TYPE TABLE OF MAKT WITH HEADER LINE.
+
+  CHECK PT_IN[] IS NOT INITIAL.
+  LOOP AT PT_IN.
+    MOVE-CORRESPONDING PT_IN TO LT_IN.
+    APPEND LT_IN.
+  ENDLOOP.
+
+  SELECT MATNR MAKTX
+     INTO CORRESPONDING FIELDS OF TABLE LT_OUT
+     FROM MAKT
+      FOR ALL ENTRIES IN LT_IN
+    WHERE MATNR EQ LT_IN-MATNR
+      AND SPRAS EQ SY-LANGU.
+
+  SORT LT_OUT BY MATNR.
+  REFRESH : PT_OUT.
+  LOOP AT LT_OUT.
+    CLEAR : PT_OUT.
+    MOVE-CORRESPONDING LT_OUT TO PT_OUT.
+    APPEND PT_OUT.
+  ENDLOOP.
+ENDFORM.                    "get_matnr_desc_table
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_kunnr_desc
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_IN      text
+*      -->PV_OUT     text
+*----------------------------------------------------------------------*
+FORM GET_KUNNR_DESC USING PV_IN CHANGING PV_OUT.
+  CLEAR : PV_OUT.
+  SELECT SINGLE NAME1
+    INTO PV_OUT
+    FROM KNA1
+   WHERE KUNNR EQ PV_IN.
+ENDFORM. "get_kunnr_desc
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_kunnr_desc_table
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_IN      text
+*      -->PT_OUT     text
+*----------------------------------------------------------------------*
+FORM GET_KUNNR_DESC_TABLE TABLES PT_IN PT_OUT.
+  DATA : LT_IN  TYPE TABLE OF KNA1 WITH HEADER LINE,
+         LT_OUT TYPE TABLE OF KNA1 WITH HEADER LINE.
+
+  CHECK PT_IN[] IS NOT INITIAL.
+  LOOP AT PT_IN.
+    MOVE-CORRESPONDING PT_IN TO LT_IN.
+    APPEND LT_IN.
+  ENDLOOP.
+
+  SELECT KUNNR NAME1
+     INTO CORRESPONDING FIELDS OF TABLE LT_OUT
+     FROM KNA1
+      FOR ALL ENTRIES IN LT_IN
+    WHERE KUNNR EQ LT_IN-KUNNR.
+
+  SORT LT_OUT BY KUNNR.
+  REFRESH : PT_OUT.
+  LOOP AT LT_OUT.
+    CLEAR : PT_OUT.
+    MOVE-CORRESPONDING LT_OUT TO PT_OUT.
+    APPEND PT_OUT.
+  ENDLOOP.
+ENDFORM. "get_kunnr_desc_table
+*&---------------------------------------------------------------------*
+*&      Form  BOM_EXPL_MAT
+*&---------------------------------------------------------------------*
+FORM BOM_EXPL_MAT TABLES PT_STB STRUCTURE STPOX
+                         PT_MATCAT STRUCTURE CSCMAT
+                   USING  PS_BOM_EXPL LIKE GS_BOM_EXPL.
+
+
+  CALL FUNCTION 'CS_BOM_EXPL_MAT_V2'
+    EXPORTING
+      FTREL                 = PS_BOM_EXPL-FTREL
+      ALEKZ                 = PS_BOM_EXPL-ALEKZ
+      ALTVO                 = PS_BOM_EXPL-ALTVO
+      AUFSW                 = PS_BOM_EXPL-AUFSW
+      AUMGB                 = PS_BOM_EXPL-AUMGB
+      AUMNG                 = PS_BOM_EXPL-AUMNG
+      AUSKZ                 = PS_BOM_EXPL-AUSKZ
+      AMIND                 = PS_BOM_EXPL-AMIND
+      BAGRP                 = PS_BOM_EXPL-BAGRP
+      BEIKZ                 = PS_BOM_EXPL-BEIKZ
+      BESSL                 = PS_BOM_EXPL-BESSL
+      BGIXO                 = PS_BOM_EXPL-BGIXO
+      BREMS                 = PS_BOM_EXPL-BREMS
+      CAPID                 = PS_BOM_EXPL-CAPID
+      CHLST                 = PS_BOM_EXPL-CHLST
+      COSPR                 = PS_BOM_EXPL-COSPR
+      CUOBJ                 = PS_BOM_EXPL-CUOBJ
+      CUOVS                 = PS_BOM_EXPL-CUOVS
+      CUOLS                 = PS_BOM_EXPL-CUOLS
+      DATUV                 = PS_BOM_EXPL-DATUV
+      DELNL                 = PS_BOM_EXPL-DELNL
+      DRLDT                 = PS_BOM_EXPL-DRLDT
+      EHNDL                 = PS_BOM_EXPL-EHNDL
+      EMENG                 = PS_BOM_EXPL-EMENG
+      ERSKZ                 = PS_BOM_EXPL-ERSKZ
+      ERSSL                 = PS_BOM_EXPL-ERSSL
+      FBSTP                 = PS_BOM_EXPL-FBSTP
+      KNFBA                 = PS_BOM_EXPL-KNFBA
+      KSBVO                 = PS_BOM_EXPL-KSBVO
+      MBWLS                 = PS_BOM_EXPL-MBWLS
+      MKTLS                 = PS_BOM_EXPL-MKTLS
+      MDMPS                 = PS_BOM_EXPL-MDMPS
+      MEHRS                 = PS_BOM_EXPL-MEHRS
+      MKMAT                 = PS_BOM_EXPL-MKMAT
+      MMAPS                 = PS_BOM_EXPL-MMAPS
+      SALWW                 = PS_BOM_EXPL-SALWW
+      SPLWW                 = PS_BOM_EXPL-SPLWW
+      MMORY                 = PS_BOM_EXPL-MMORY
+      MTNRV                 = PS_BOM_EXPL-MTNRV
+      NLINK                 = PS_BOM_EXPL-NLINK
+      POSTP                 = PS_BOM_EXPL-POSTP
+      RNDKZ                 = PS_BOM_EXPL-RNDKZ
+      RVREL                 = PS_BOM_EXPL-RVREL
+      SANFR                 = PS_BOM_EXPL-SANFR
+      SANIN                 = PS_BOM_EXPL-SANIN
+      SANKA                 = PS_BOM_EXPL-SANKA
+      SANKO                 = PS_BOM_EXPL-SANKO
+      SANVS                 = PS_BOM_EXPL-SANVS
+      SCHGT                 = PS_BOM_EXPL-SCHGT
+      STKKZ                 = PS_BOM_EXPL-STKKZ
+      STLAL                 = PS_BOM_EXPL-STLAL
+      STLAN                 = PS_BOM_EXPL-STLAN
+      STPST                 = PS_BOM_EXPL-STPST
+      SVWVO                 = PS_BOM_EXPL-SVWVO
+      WERKS                 = PS_BOM_EXPL-WERKS
+      NORVL                 = PS_BOM_EXPL-NORVL
+      MDNOT                 = PS_BOM_EXPL-MDNOT
+      PANOT                 = PS_BOM_EXPL-PANOT
+      QVERW                 = PS_BOM_EXPL-QVERW
+      VERID                 = PS_BOM_EXPL-VERID
+      VRSVO                 = PS_BOM_EXPL-VRSVO
+    TABLES
+      STB                   = PT_STB
+      MATCAT                = PT_MATCAT
+    EXCEPTIONS
+      ALT_NOT_FOUND         = 1
+      CALL_INVALID          = 2
+      MATERIAL_NOT_FOUND    = 3
+      MISSING_AUTHORIZATION = 4
+      NO_BOM_FOUND          = 5
+      NO_PLANT_DATA         = 6
+      NO_SUITABLE_BOM_FOUND = 7
+      CONVERSION_ERROR      = 8
+      OTHERS                = 9.
+
+
+
+
+ENDFORM.                    " BOM_EXPL_MAT
+*&---------------------------------------------------------------------*
+*&      Form  GET_ARBPL_DESC_TABLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LTS_ARBPL  text
+*      -->P_LT_KTEXT  text
+*----------------------------------------------------------------------*
+FORM GET_ARBPL_DESC_TABLE  TABLES  PT_IN PT_OUT.
+  DATA: BEGIN OF LT_IN OCCURS 0,
+         ARBPL LIKE CRHD-ARBPL,
+         KTEXT LIKE CRTX-KTEXT,
+        END OF LT_IN.
+
+  DATA : LT_OUT LIKE TABLE OF LT_IN WITH HEADER LINE.
+
+  CHECK PT_IN[] IS NOT INITIAL.
+  LOOP AT PT_IN.
+    MOVE-CORRESPONDING PT_IN TO LT_IN.
+    APPEND LT_IN.
+  ENDLOOP.
+  SELECT  A~KTEXT  B~ARBPL
+       INTO CORRESPONDING FIELDS OF TABLE LT_OUT
+        FROM ( CRTX AS A  INNER JOIN CRHD AS B
+                       ON A~OBJID = B~OBJID )
+        FOR ALL ENTRIES IN LT_IN
+        WHERE  B~ARBPL EQ LT_IN-ARBPL
+        AND  A~SPRAS = SY-LANGU.
+
+  SORT LT_OUT BY ARBPL.
+  REFRESH : PT_OUT.
+  LOOP AT LT_OUT.
+    CLEAR : PT_OUT.
+    MOVE-CORRESPONDING LT_OUT TO PT_OUT.
+    APPEND PT_OUT.
+  ENDLOOP.
+ENDFORM.                    " GET_ARBPL_DESC_TABLE
+*&---------------------------------------------------------------------*
+*&      Form  GET_IDNRK_DESC_TABLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LTS_IDNRK  text
+*      -->P_LT_MAKT  text
+*----------------------------------------------------------------------*
+FORM GET_IDNRK_DESC_TABLE  TABLES PT_IN PT_OUT.
+
+  DATA: BEGIN OF LT_IN OCCURS 0,
+         IDNRK LIKE STPO-IDNRK,
+         MAKTX LIKE MAKT-MAKTX,
+        END OF LT_IN.
+  DATA: LT_OUT LIKE TABLE OF LT_IN WITH HEADER LINE.
+
+  CHECK PT_IN[] IS NOT INITIAL.
+  LOOP AT PT_IN.
+    MOVE-CORRESPONDING PT_IN TO LT_IN.
+    APPEND LT_IN.
+  ENDLOOP.
+
+  SELECT MATNR AS IDNRK MAKTX
+     INTO CORRESPONDING FIELDS OF TABLE LT_OUT
+     FROM MAKT
+      FOR ALL ENTRIES IN LT_IN
+    WHERE MATNR EQ LT_IN-IDNRK
+      AND SPRAS EQ SY-LANGU.
+
+  SORT LT_OUT BY IDNRK.
+  REFRESH : PT_OUT.
+  LOOP AT LT_OUT.
+    CLEAR : PT_OUT.
+    MOVE-CORRESPONDING LT_OUT TO PT_OUT.
+    APPEND PT_OUT.
+  ENDLOOP.
+
+ENDFORM.                    " GET_IDNRK_DESC_TABLE
+*&---------------------------------------------------------------------*
+*&      Form  MAKE_MESSAGE_TABLE_2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_RETURN  text
+*      <--P_LV_MSG  text
+*----------------------------------------------------------------------*
+FORM MAKE_MESSAGE_TABLE_1 TABLES    PT_RETURN STRUCTURE BAPIRET1
+                          CHANGING    PV_MESSAGE.
+  DATA : LV_MESSAGE(128).
+  CLEAR : LV_MESSAGE.
+  LOOP AT PT_RETURN.
+    MESSAGE ID     PT_RETURN-ID
+            TYPE   PT_RETURN-TYPE
+            NUMBER PT_RETURN-NUMBER
+            WITH   PT_RETURN-MESSAGE_V1
+                   PT_RETURN-MESSAGE_V2
+                   PT_RETURN-MESSAGE_V3
+                   PT_RETURN-MESSAGE_V4
+            INTO   LV_MESSAGE.
+    IF PV_MESSAGE IS INITIAL.
+      PV_MESSAGE = LV_MESSAGE.
+    ELSE.
+      CONCATENATE PV_MESSAGE LV_MESSAGE INTO PV_MESSAGE SEPARATED BY
+'/'.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.                    " MAKE_MESSAGE_TABLE_2
+*&---------------------------------------------------------------------*
+*&      Form  GET_LAST_DAY_OF_MONTHS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_LOW  text
+*      <--P_LV_HIGH  text
+*----------------------------------------------------------------------*
+FORM GET_LAST_DAY_OF_MONTHS  USING    PV_IN
+                             CHANGING PV_OUT.
+  DATA: LV_IN  LIKE SY-DATUM.
+  DATA: LV_OUT LIKE SY-DATUM.
+  LV_IN = PV_IN.
+
+  CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+    EXPORTING
+      DAY_IN            = LV_IN
+    IMPORTING
+      LAST_DAY_OF_MONTH = LV_OUT
+    EXCEPTIONS
+      DAY_IN_NO_DATE    = 1
+      OTHERS            = 2.
+  PV_OUT = LV_OUT.
+ENDFORM.                    " GET_LAST_DAY_OF_MONTHS
+*&---------------------------------------------------------------------*
+*&      Form  SET_CHECKLIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0150   text
+*      -->P_0151   text
+*      -->P_0152   text
+*      -->P_0153   text
+*      -->P_0154   text
+*----------------------------------------------------------------------*
+FORM set_fcat  USING    p_key p_field p_text p_ref_table p_edit.
+
+  GS_FIELDCAT-key       = p_key.
+  GS_FIELDCAT-fieldname = p_field.
+  GS_FIELDCAT-coltext   = p_text.
+  GS_FIELDCAT-ref_table = p_ref_table.
+  GS_FIELDCAT-edit      = p_edit.
+
+
+  CASE p_field.
+    WHEN 'CHECK'.
+      GS_FIELDCAT-CHECKBOX = 'X'.
+
+  ENDCASE.
+
+
+  APPEND GS_FIELDCAT TO FIELDCAT.
+  CLEAR GS_FIELDCAT.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

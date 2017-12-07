@@ -1,0 +1,321 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPPG_RATEROUTING_CREATE_COPY</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for function: ZPPG_RATEROUTING_CREATE_COPY</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  sjdfklasdfj</b></font>
+<hr>
+<pre width="100">
+FUNCTION ZPPG_RATEROUTING_CREATE_COPY.
+<font color ="#0000FF">*"--------------------------------------------------------------------</font>
+<font color ="#0000FF">*"*"Local Interface:</font>
+<font color ="#0000FF">*"  IMPORTING</font>
+<font color ="#0000FF">*"     VALUE(TESTRUN) TYPE  BAPIFLAG DEFAULT SPACE</font>
+<font color ="#0000FF">*"     VALUE(PROFILE) LIKE  BAPI1012_CONTROL_DATA-PROFILE OPTIONAL</font>
+<font color ="#0000FF">*"     VALUE(BOMUSAGE) LIKE  BAPI1012_CONTROL_DATA-BOM_USAGE OPTIONAL</font>
+<font color ="#0000FF">*"     VALUE(APPLICATION) LIKE  BAPI1012_CONTROL_DATA-APPLICATION</font>
+<font color ="#0000FF">*"         OPTIONAL</font>
+<font color ="#0000FF">*"  EXPORTING</font>
+<font color ="#0000FF">*"     VALUE(GROUP) TYPE  BAPI1012_TSK_C-TASK_LIST_GROUP</font>
+<font color ="#0000FF">*"     VALUE(GROUPCOUNTER) TYPE  BAPI1012_TSK_C-GROUP_COUNTER</font>
+<font color ="#0000FF">*"  TABLES</font>
+<font color ="#0000FF">*"      TASK STRUCTURE  BAPI1012_TSK_C</font>
+<font color ="#0000FF">*"      MATERIALTASKALLOCATION STRUCTURE  BAPI1012_MTK_C OPTIONAL</font>
+<font color ="#0000FF">*"      SEQUENCE STRUCTURE  BAPI1012_SEQ_C OPTIONAL</font>
+<font color ="#0000FF">*"      OPERATION STRUCTURE  BAPI1012_OPR_C OPTIONAL</font>
+<font color ="#0000FF">*"      SUBOPERATION STRUCTURE  BAPI1012_SUB_OPR_C OPTIONAL</font>
+<font color ="#0000FF">*"      REFERENCEOPERATION STRUCTURE  BAPI1012_REF_OPR_C OPTIONAL</font>
+<font color ="#0000FF">*"      WORKCENTERREFERENCE STRUCTURE  BAPI1012_WC_REF_OPR_C OPTIONAL</font>
+<font color ="#0000FF">*"      COMPONENTALLOCATION STRUCTURE  BAPI1012_COM_C OPTIONAL</font>
+<font color ="#0000FF">*"      PRODUCTIONRESOURCE STRUCTURE  BAPI1012_PRT_C OPTIONAL</font>
+<font color ="#0000FF">*"      INSPCHARACTERISTIC STRUCTURE  BAPI1012_CHA_C OPTIONAL</font>
+<font color ="#0000FF">*"      TEXTALLOCATION STRUCTURE  BAPI1012_TXT_HDR_C OPTIONAL</font>
+<font color ="#0000FF">*"      TEXT STRUCTURE  BAPI1012_TXT_C OPTIONAL</font>
+<font color ="#0000FF">*"      RETURN STRUCTURE  BAPIRET2 OPTIONAL</font>
+<font color ="#0000FF">*"      TASK_SEGMENT STRUCTURE  BAPI1012_TSK_SEGMENT OPTIONAL</font>
+<font color ="#0000FF">*"--------------------------------------------------------------------</font>
+
+<font color ="#0000FF">*       <a href ="global-zppg_raterouting_create_copy.html">Global data declarations</a></font>
+
+
+<font color ="#0000FF">*       Global data declarations</font>
+  DATA:
+    transaction_header            TYPE transfer_header_interface,
+    tsk_data_interface_tab        TYPE cpcdt_tsk_interf_tab_type,
+    mtk_data_interface_tab        TYPE cpcdt_mtk_interf_tab_type,
+    seq_data_interface_tab        TYPE cpcdt_seq_interf_tab_type,
+    opr_data_interface_tab        TYPE cpcdt_opr_interf_tab_type,
+    sub_opr_data_interface_tab    TYPE cpcdt_sub_opr_interf_tab_type,
+    opr_ref_data_interface_tab    TYPE cpcdt_opr_ref_interf_tab_type,
+    opr_wc_ref_data_interface_tab TYPE cpcdt_opr_wc_ref_interf_tab_tp,
+    prt_data_interface_tab        TYPE cpcdt_prt_interf_tab_type,
+    com_data_interface_tab        TYPE cpcdt_com_interf_tab_type,
+    cha_data_interface_tab        TYPE cpcdt_cha_interf_tab_type,
+    txt_hdr_data_interface_tab    TYPE cpcdt_txt_hdr_interf_tab_type,
+    txt_data_interface_tab        TYPE cpcdt_txt_interf_tab_type.
+<font color ="#0000FF">*</font>
+  DATA:
+    return_tmp      TYPE STANDARD TABLE OF bapiret2,
+    return_tmp_conv TYPE STANDARD TABLE OF bapiret2,
+    wa_return_tmp   TYPE                   bapiret2,
+    tsk_ident       TYPE                   cpcl_tsk_tab_type,
+    wa_tsk_ident    TYPE LINE OF           cpcl_tsk_tab_type,
+    abortion_error  TYPE                   c,
+    object_key(13)  TYPE                   c.
+<font color ="#0000FF">*</font>
+  FIELD-SYMBOLS: &lt;return_tmp&gt; TYPE bapiret2.
+
+
+
+  REFRESH return.
+
+  CLEAR:   group,
+           groupcounter,
+           return.
+
+<font color ="#0000FF">* check whether there is any data to process</font>
+  IF task[]                   IS INITIAL AND
+     materialtaskallocation[] IS INITIAL AND
+     sequence[]               IS INITIAL AND
+     operation[]              IS INITIAL AND
+     suboperation[]           IS INITIAL AND
+     referenceoperation[]     IS INITIAL AND
+     workcenterreference[]    IS INITIAL AND
+     componentallocation[]    IS INITIAL AND
+     productionresource[]     IS INITIAL AND
+     inspcharacteristic[]     IS INITIAL AND
+     textallocation[]         IS INITIAL AND
+     text[]                   IS INITIAL.
+<font color ="#0000FF">**   no data provided</font>
+<font color ="#0000FF">*    MOVE: message_type-error TO wa_return_tmp-type,</font>
+    MOVE: 'E' TO wa_return_tmp-type,
+          'BAPI'             TO wa_return_tmp-id,
+          '001'              TO wa_return_tmp-number,
+          'Routing'          TO wa_return_tmp-message_v1.   "#EC NOTEXT
+
+<font color ="#0000FF">*   get system id</font>
+    CALL FUNCTION 'OWN_LOGICAL_SYSTEM_GET'
+      IMPORTING
+        own_logical_system             = wa_return_tmp-system
+      EXCEPTIONS
+        own_logical_system_not_defined = 1.
+
+    APPEND wa_return_tmp TO return.
+
+    CALL FUNCTION 'BALW_BAPIRETURN_GET2'
+      EXPORTING
+<font color ="#0000FF">*        type   = message_type-abort</font>
+        type   = 'A'
+        cl     = 'CPCC_DT'
+        number = '007'
+      IMPORTING
+        return = wa_return_tmp.
+
+    APPEND wa_return_tmp TO return.
+<font color ="#0000FF">*</font>
+  ENDIF.                     " if task[] ....
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">** subscribe refresh module for COMMIT / ROLLBACK WORK</font>
+  CALL FUNCTION 'BUFFER_SUBSCRIBE_FOR_REFRESH'
+    EXPORTING
+      name_of_deletefunc = 'ROUTING_CLEARBUFFER'.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** convert data to internal format</font>
+  PERFORM convert_external_tsk TABLES   task
+                                        return_tmp_conv
+                               CHANGING tsk_data_interface_tab.
+
+  PERFORM convert_external_mtk TABLES   materialtaskallocation
+                               CHANGING mtk_data_interface_tab.
+
+  PERFORM convert_external_seq TABLES   sequence
+                                        return_tmp_conv
+                               CHANGING seq_data_interface_tab.
+
+  PERFORM convert_external_opr TABLES   operation
+                                        return_tmp_conv
+                               CHANGING opr_data_interface_tab.
+
+  PERFORM convert_external_sub_opr TABLES
+                                     suboperation
+                                     return_tmp_conv
+                                   CHANGING
+                                     sub_opr_data_interface_tab.
+
+  PERFORM convert_external_ref_opr TABLES
+                                     referenceoperation
+                                   CHANGING
+                                     opr_ref_data_interface_tab.
+
+  PERFORM convert_external_wc_ref_opr TABLES
+                                        workcenterreference
+                                      CHANGING
+                                        opr_wc_ref_data_interface_tab.
+
+  PERFORM convert_external_com TABLES   componentallocation
+                                        return_tmp_conv
+                               CHANGING com_data_interface_tab.
+
+  PERFORM convert_external_prt TABLES   productionresource
+                                        return_tmp_conv
+                               CHANGING prt_data_interface_tab.
+
+  PERFORM convert_external_cha TABLES   inspcharacteristic
+                                        return_tmp_conv
+                               CHANGING cha_data_interface_tab.
+
+  PERFORM convert_external_txt_hdr TABLES
+                                     textallocation
+                                     return_tmp_conv
+                                   CHANGING
+                                     txt_hdr_data_interface_tab.
+
+  PERFORM convert_external_txt TABLES   text
+                               CHANGING txt_data_interface_tab.
+
+<font color ="#0000FF">* create transcation header</font>
+  PERFORM setup_transaction_header USING    profile
+                                            bomusage
+                                            application
+                                   CHANGING transaction_header.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**ENHANCEMENT-POINT BAPI_ROUTING_CREATE_01 SPOTS ES_SAPLCPCC_BUS1012.</font>
+<font color ="#0000FF">** Aufruf cp_cc_s_import_data</font>
+<font color ="#0000FF">*</font>
+  CALL FUNCTION 'CP_CC_S_IMPORT_DATA'
+    EXPORTING
+      i_check_only                 = testrun
+      i_transaction_header_interf  = transaction_header
+      i_tsk_data_interf_tab        = tsk_data_interface_tab
+      i_mtk_data_interf_tab        = mtk_data_interface_tab
+      i_seq_data_interf_tab        = seq_data_interface_tab
+      i_opr_data_interf_tab        = opr_data_interface_tab
+      i_sub_opr_data_interf_tab    = sub_opr_data_interface_tab
+      i_opr_ref_data_interf_tab    = opr_ref_data_interface_tab
+      i_opr_wc_ref_data_interf_tab = opr_wc_ref_data_interface_tab
+      i_prt_data_interf_tab        = prt_data_interface_tab
+      i_com_data_interf_tab        = com_data_interface_tab
+      i_cha_data_interf_tab        = cha_data_interface_tab
+<font color ="#0000FF">*     I_CHV_DATA_INTERF_TAB        =</font>
+      i_txt_hdr_data_interf_tab    = txt_hdr_data_interface_tab
+      i_txt_data_interf_tab        = txt_data_interface_tab
+    IMPORTING
+      e_plnnr                      = group
+      e_plnal                      = groupcounter
+    TABLES
+      return                       = return_tmp.
+<font color ="#0000FF">*</font>
+  APPEND LINES OF return_tmp_conv TO return_tmp.
+
+<font color ="#0000FF">* check errors if there is an 'abort' - message</font>
+  LOOP AT return_tmp ASSIGNING &lt;return_tmp&gt;.
+<font color ="#0000FF">*    IF &lt;return_tmp&gt;-type = message_type-abort OR</font>
+    IF &lt;return_tmp&gt;-type = 'A' OR
+<font color ="#0000FF">*       &lt;return_tmp&gt;-type = message_type-error.</font>
+       &lt;return_tmp&gt;-type = 'E'.
+<font color ="#0000FF">*     import will be stopped</font>
+      abortion_error = const-flg_yes.
+      EXIT.
+    ENDIF.                   " if &lt;return_tmp&gt;....
+
+  ENDLOOP.                   " loop at return_tmp ....
+
+  IF NOT abortion_error = const-flg_yes.
+<font color ="#0000FF">*   no abortion errors found -&gt; save data</font>
+    IF testrun IS INITIAL.
+<font color ="#0000FF">*     in test mode data will not be saved</font>
+      CALL FUNCTION 'CP_CC_S_SAVE'.
+
+<font color ="#0000FF">*     add information message used with DX-Workbench</font>
+      CONCATENATE cp_const-plnty_rep group groupcounter
+                  INTO object_key
+                  SEPARATED BY '/'.
+
+<font color ="#0000FF">*      MOVE: message_type-success TO wa_return_tmp-type,</font>
+      MOVE: 'S' TO wa_return_tmp-type,
+            'BAPI'               TO wa_return_tmp-id,
+            '000'                TO wa_return_tmp-number,
+            'Routing'            TO wa_return_tmp-message_v1,
+            object_key           TO wa_return_tmp-message_v2.
+
+<font color ="#0000FF">*     get system id</font>
+      CALL FUNCTION 'OWN_LOGICAL_SYSTEM_GET'
+        IMPORTING
+          own_logical_system             = wa_return_tmp-system
+        EXCEPTIONS
+          own_logical_system_not_defined = 1.
+
+      APPEND wa_return_tmp TO return.
+    ELSE.                                                   "n_1377598
+      CALL FUNCTION 'CC_DATA_INIT'.                         "n_1377598
+    ENDIF.                   " if testrun is initial....
+
+  ELSE.
+<font color ="#0000FF">*   data is inconsistent -&gt; do not save any data!!</font>
+<font color ="#0000FF">*    MOVE: message_type-error TO wa_return_tmp-type,</font>
+    MOVE: 'E' TO wa_return_tmp-type,
+          'BAPI'             TO wa_return_tmp-id,
+          '001'              TO wa_return_tmp-number,
+          'Routing'          TO wa_return_tmp-message_v1.
+
+<font color ="#0000FF">*   get system id</font>
+    CALL FUNCTION 'OWN_LOGICAL_SYSTEM_GET'
+      IMPORTING
+        own_logical_system             = wa_return_tmp-system
+      EXCEPTIONS
+        own_logical_system_not_defined = 1.
+
+    APPEND wa_return_tmp TO return.
+
+    IF NOT group IS INITIAL.
+<font color ="#0000FF">*     task was already created -&gt; remove objects from memory!</font>
+      wa_tsk_ident-mandt = sy-mandt.
+      wa_tsk_ident-plnty = cp_const-plnty_rep.
+      wa_tsk_ident-plnnr = group.
+      wa_tsk_ident-plnal = groupcounter.
+
+      APPEND wa_tsk_ident TO tsk_ident.
+
+      CALL FUNCTION 'CP_CC_S_UNLOAD_BY_TSK'
+        EXPORTING
+          i_tsk_ident = tsk_ident.
+
+    ENDIF.                   " if not group ....
+
+  ENDIF.                     " if not abortion_error....
+
+<font color ="#0000FF">* return messages collected during import</font>
+  APPEND LINES OF return_tmp TO return.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+
+
+
+
+
+ENDFUNCTION.
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: PT_RETURN-ID</font>
+<font color ="#0000FF">*PT_</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZCAGM</font>
+<font color ="#0000FF">*001</font>
+<font color ="#0000FF">*002</font>
+<font color ="#0000FF">*012</font>
+<font color ="#0000FF">*013</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZCOEMSG</font>
+<font color ="#0000FF">*002</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

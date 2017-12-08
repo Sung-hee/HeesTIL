@@ -1,0 +1,1527 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZCAG0002_ALV</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZCAG0002_ALV</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZCAG0000_ALV</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZCAG0000_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       CLASS lcl_event_receiver DEFINITION</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+ CLASS LCL_EVENT_RECEIVER DEFINITION.
+   PUBLIC SECTION.    "이 부분에 Public Attributes와 Method를 선언한다.
+     "ALV Grid에서 Data 변경에 대한 Event 처리 Handler 선언
+     METHODS : HANDLE_DATA_CHANGED
+                  FOR EVENT DATA_CHANGED OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER
+                            ER_DATA_CHANGED
+                            E_ONF4_AFTER.
+
+     "ALV Grid에서 User Command 실행 Event 처리 Handler 선언
+     METHODS : HANDLE_USER_COMMAND
+                  FOR EVENT USER_COMMAND OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER
+                            E_UCOMM.
+
+     "ALV Grid에서 Toolbar 버튼 실행 Event 처리 Handler 선언
+     METHODS : HANDLE_TOOLBAR
+                  FOR EVENT TOOLBAR OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER
+                            E_OBJECT
+                            E_INTERACTIVE.
+
+     "ALV Grid에서 Menu 버튼 실행 Event 처리 Handler 선언
+     METHODS : HANDLE_MENU_BUTTON
+                  FOR EVENT MENU_BUTTON OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER
+                            E_OBJECT
+                            E_UCOMM.
+
+     "ALV Grid에서 탐색도움말 Event 처리 Handler 선언
+     METHODS : HANDLE_ONF4
+                  FOR EVENT ONF4 OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER
+                            E_FIELDNAME
+                            E_FIELDVALUE
+                            ES_ROW_NO
+                            ER_EVENT_DATA
+                            ET_BAD_CELLS
+                            E_DISPLAY.
+
+     "ALV Grid에서 Data 변경종료에 대한 Event 처리 Handler 선언
+     METHODS : HANDLE_CHANGED_FINISHED
+                  FOR EVENT DATA_CHANGED_FINISHED OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER E_MODIFIED.
+
+     "ALV Grid에서 Row Double-click에 대한 Event 처리 Handler 선언
+     METHODS : HANDLE_DOUBLE_CLICK
+                  FOR EVENT DOUBLE_CLICK OF CL_GUI_ALV_GRID
+                  IMPORTING SENDER
+                            E_ROW
+                            E_COLUMN
+                            ES_ROW_NO.
+
+
+     "ALV Grid에서 hotspot에 대한 Event 처리 Handler 선언
+     METHODS : HANDLE_HOTSPOT_CLICK
+                   FOR EVENT HOTSPOT_CLICK OF CL_GUI_ALV_GRID
+                   IMPORTING SENDER
+                             E_ROW_ID
+                             E_COLUMN_ID.
+
+
+     "ALV Grid에서 subtot에 대한 Event 처리 Handler 선언
+     METHODS : HANDLE_SUBTOTAL_TEXT
+                   FOR EVENT SUBTOTAL_TEXT OF CL_GUI_ALV_GRID
+                  IMPORTING  SENDER
+                             ES_SUBTOTTXT_INFO
+                             EP_SUBTOT_LINE
+                             E_EVENT_DATA.
+
+
+
+<font color ="#0000FF">*   ALV Treen Event</font>
+     METHODS HDTREE_NODE_CTMENU_REQUEST
+        FOR EVENT NODE_CONTEXT_MENU_REQUEST OF CL_GUI_ALV_TREE
+          IMPORTING NODE_KEY
+                    MENU.
+
+     METHODS HDTREE_NODE_CTMENU_SELECTED
+       FOR EVENT NODE_CONTEXT_MENU_SELECTED OF CL_GUI_ALV_TREE
+         IMPORTING NODE_KEY
+                   FCODE.
+
+     METHODS HDTREE_ITEM_CTMENU_REQUEST
+       FOR EVENT ITEM_CONTEXT_MENU_REQUEST OF CL_GUI_ALV_TREE
+         IMPORTING NODE_KEY
+                   FIELDNAME
+                   MENU.
+
+     METHODS HDTREE_ITEM_CTMENU_SELECTED
+       FOR EVENT ITEM_CONTEXT_MENU_SELECTED OF CL_GUI_ALV_TREE
+         IMPORTING NODE_KEY
+                   FIELDNAME
+                   FCODE.
+
+     METHODS HDTREE_NODE_DOUBLE_CLICK
+       FOR EVENT NODE_DOUBLE_CLICK OF CL_GUI_ALV_TREE
+       IMPORTING NODE_KEY.
+
+
+     METHODS HDTREE_ITEM_DOUBLE_CLICK
+       FOR EVENT ITEM_DOUBLE_CLICK OF CL_GUI_ALV_TREE
+       IMPORTING NODE_KEY.
+
+
+     METHODS HDTREE_BUTTON_CLICK
+       FOR EVENT BUTTON_CLICK OF CL_GUI_ALV_TREE
+       IMPORTING NODE_KEY
+                 FIELDNAME.
+
+     METHODS HDTREE_LINK_CLICK
+       FOR EVENT LINK_CLICK OF CL_GUI_ALV_TREE
+       IMPORTING NODE_KEY
+                 FIELDNAME.
+
+     METHODS HDTREE_HEADER_CLICK
+       FOR EVENT HEADER_CLICK OF CL_GUI_ALV_TREE
+       IMPORTING FIELDNAME.
+
+
+   PRIVATE SECTION.      "이 부분에 Private Attributes와 Method를 선언한다.
+
+ ENDCLASS. "LCL_EVENT_RECEIVER DEFINITION
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       CLASS lcl_event_receiver IMPLEMENTATION</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ CLASS LCL_EVENT_RECEIVER IMPLEMENTATION.
+   METHOD HANDLE_DATA_CHANGED.
+     PERFORM ALV_DATA_CHANGED IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+                                                       ER_DATA_CHANGED
+                                                       E_ONF4_AFTER.
+   ENDMETHOD.                    "HANDLE_DATA_CHANGED
+
+   METHOD HANDLE_USER_COMMAND.
+     PERFORM ALV_USER_COMMAND IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+                                                       E_UCOMM.
+   ENDMETHOD.                    "HANDLE_USER_COMMAND
+
+   METHOD HANDLE_TOOLBAR.
+     PERFORM ALV_EVENT_TOOLBAR IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+                                                        E_OBJECT
+                                                        E_INTERACTIVE.
+   ENDMETHOD.                    "HANDLE_TOOLBAR
+
+   METHOD HANDLE_MENU_BUTTON.
+     PERFORM ALV_MENU_BUTTON IN PROGRAM (SY-REPID) IF FOUND USING SENDER
+                                                      E_OBJECT
+                                                      E_UCOMM.
+   ENDMETHOD.                    "HANDLE_MENU_BUTTON
+
+   METHOD HANDLE_ONF4.
+     PERFORM ALV_ONF4 IN PROGRAM (SY-REPID) IF FOUND USING SENDER
+                                               E_FIELDNAME
+                                               E_FIELDVALUE
+                                               ES_ROW_NO
+                                               ER_EVENT_DATA
+                                               ET_BAD_CELLS
+                                               E_DISPLAY.
+     ER_EVENT_DATA-&gt;M_EVENT_HANDLED = 'X'.
+   ENDMETHOD.                    "HANDLE_ONF4
+
+   METHOD HANDLE_CHANGED_FINISHED.
+     PERFORM ALV_CHANGED_FINISHED IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+                                                           E_MODIFIED.
+   ENDMETHOD.                    "HANDLE_CHANGED_FINISHED
+
+   METHOD HANDLE_DOUBLE_CLICK.
+     PERFORM ALV_DOUBLE_CLICK IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+                                                       E_ROW
+                                                       E_COLUMN
+                                                       ES_ROW_NO.
+   ENDMETHOD.                     "HANDLE_DOUBLE_CLICK
+
+   METHOD HANDLE_HOTSPOT_CLICK.
+     PERFORM ALV_HOTSPOT_CLICK IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+                                                        E_ROW_ID
+                                                        E_COLUMN_ID.
+   ENDMETHOD.                    "handle_hotspot_click
+
+   METHOD HANDLE_SUBTOTAL_TEXT.
+     PERFORM ALV_SUBTOTAL_TEXT IN PROGRAM (SY-REPID) IF FOUND USING
+     SENDER
+ES_SUBTOTTXT_INFO
+                                                        EP_SUBTOT_LINE
+                                                        E_EVENT_DATA.
+   ENDMETHOD.                    "handle_hotspot_click
+
+
+   METHOD HDTREE_NODE_CTMENU_REQUEST.
+
+   ENDMETHOD.                    "hdtree_node_ctmenu_request
+
+   METHOD HDTREE_NODE_CTMENU_SELECTED.
+   ENDMETHOD.                    "hdtree_node_ctmenu_selected
+
+   METHOD HDTREE_ITEM_CTMENU_REQUEST .
+   ENDMETHOD.                    "hdtree_item_ctmenu_request
+
+   METHOD HDTREE_ITEM_CTMENU_SELECTED.
+   ENDMETHOD.                    "hdtree_item_ctmenu_selected
+
+
+   METHOD HDTREE_NODE_DOUBLE_CLICK.
+     PERFORM NODE_DOUBLE_CLICK IN PROGRAM (SY-REPID) IF FOUND USING
+     NODE_KEY.
+
+   ENDMETHOD.                    "hdtree_item_double_click
+
+   METHOD HDTREE_ITEM_DOUBLE_CLICK.
+     PERFORM NODE_DOUBLE_CLICK IN PROGRAM (SY-REPID) IF FOUND USING
+     NODE_KEY.
+   ENDMETHOD.                    "hdtree_item_double_click
+
+   METHOD HDTREE_BUTTON_CLICK.
+   ENDMETHOD.                    "hdtree_button_click
+
+   METHOD HDTREE_LINK_CLICK.
+   ENDMETHOD.                    "hdtree_link_click
+
+   METHOD HDTREE_HEADER_CLICK.
+   ENDMETHOD.                    "hdtree_header_click
+
+ ENDCLASS. "LCL_EVENT_RECEIVER
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  DEFINITION TYPES & VARIABLE</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+ TYPE-POOLS : SLIS.
+
+ "선택된 Row 정보를 가져오기 위한 사용자 정의 Type
+ TYPES : BEGIN OF T_ROW,
+           ROW    TYPE I         ,
+           VALUE    TYPE C         ,
+           COL    TYPE I         ,
+           ROW_ID   TYPE LVC_S_ROW ,
+           COL_ID   TYPE LVC_S_COL ,
+           ROW_NO   TYPE LVC_S_ROID,
+         END OF T_ROW.
+
+ "원하는 위치로 Row, Column을 Scrolling 하기 위한 사용자 정의 Type
+ TYPES : BEGIN OF T_SCROLL,
+           ROW_INFO TYPE LVC_S_ROW ,
+           COL_INFO TYPE LVC_S_COL ,
+           ROW_NO   TYPE LVC_S_ROID,
+         END OF T_SCROLL.
+
+ "ALV Grid를 위한 변수선언*-- i.CTP Denny
+ DATA : GS_V_ROW TYPE T_ROW , "선택된 Row 정보
+       GS_V_SCROLL TYPE T_SCROLL.     "이동할 Scrolling 위치 정보
+
+ DATA : GT_EXCLUDE TYPE UI_FUNCTIONS. "ALV에서 제외할 Function Code
+
+ DATA : GS_SPLITTER TYPE REF TO CL_GUI_SPLITTER_CONTAINER,
+        GS_SPLITTER2 TYPE REF TO CL_GUI_SPLITTER_CONTAINER,
+        GS_SPLITTER3 TYPE REF TO CL_GUI_SPLITTER_CONTAINER,
+        GS_SPLITTER4 TYPE REF TO CL_GUI_SPLITTER_CONTAINER,
+        GS_EVENT_RECEIVER     TYPE REF TO LCL_EVENT_RECEIVER           ,
+        FIELDCAT            TYPE LVC_S_FCAT OCCURS 0 WITH HEADER LINE,
+        GT_FIELD_T          TYPE LVC_S_FCAT OCCURS 0 WITH HEADER LINE,
+        GT_FIELDCAT_H       TYPE LVC_T_FCAT WITH HEADER LINE,
+        GS_FIELDCAT         TYPE LVC_S_FCAT                          ,
+        GS_SORT             TYPE LVC_S_SORT                          ,
+        GT_SORT             TYPE LVC_T_SORT WITH HEADER LINE         ,
+        GS_LAYOUT           TYPE LVC_S_LAYO                          ,
+        GV_VARIANT          TYPE DISVARIANT                          ,
+        GV_SAVE             TYPE C                                   ,
+        GV_COL_POS          TYPE I                                   ,
+        GT_FILTER           TYPE LVC_T_FILT                          ,
+        GS_FILTER           TYPE LVC_S_FILT                          ,
+        GS_ALV_F4           TYPE LVC_S_F4                            ,
+        GT_ALV_F4           TYPE LVC_T_F4                            .
+
+ DATA : GT_FIELDS  TYPE TABLE OF HELP_VALUE WITH HEADER LINE.
+ DATA : GV_INDEX   LIKE SY-TABIX ,
+        GV_SVALUE  LIKE  HELP_INFO-FLDVALUE ,
+        GV_SFIELD  LIKE  HELP_INFO-FIELDNAME.
+
+ DATA : GS_CCON1  TYPE REF TO CL_GUI_CUSTOM_CONTAINER ,
+        GS_CCON2  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON3  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON4  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON5  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON6  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON7  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON8  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+        GS_CCON9  TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+
+        GS_DCON1  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON2  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON3  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON4  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON5  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON6  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON7  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON8  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+        GS_DCON9  TYPE REF TO CL_GUI_DOCKING_CONTAINER,
+
+        GS_GCON1  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON2  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON3  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON4  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON5  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON6  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON7  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON8  TYPE REF TO CL_GUI_CONTAINER,
+        GS_GCON9  TYPE REF TO CL_GUI_CONTAINER,
+
+        GRID1     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID2     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID3     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID4     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID5     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID6     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID7     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID8     TYPE REF TO CL_GUI_ALV_GRID,
+        GRID9     TYPE REF TO CL_GUI_ALV_GRID,
+
+        TREE1     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE2     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE3     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE4     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE5     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE6     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE7     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE8     TYPE REF TO CL_GUI_ALV_TREE,
+        TREE9     TYPE REF TO CL_GUI_ALV_TREE.
+
+
+
+ DATA : G_EASY_SPLITTER TYPE REF TO CL_GUI_EASY_SPLITTER_CONTAINER,
+        G_TOP_CONTAINER     TYPE REF TO CL_GUI_CONTAINER,
+        G_BOTTOM_CONTAINER  TYPE REF TO CL_GUI_CONTAINER,
+        G_DOCUMENT          TYPE REF TO CL_DD_DOCUMENT  .
+
+
+ DATA : GT_INDEX_ROWS  TYPE LVC_T_ROW ,
+ "ALV Grid의 Row Index 정보 Internal Table
+        GT_ROW_NO      TYPE LVC_T_ROID,
+        "ALV Grid의 Row ID 정보 Internal Table
+        GS_INDEX_ROWS  TYPE LVC_S_ROW ,
+        "ALV Grid의 Row Index 정보 Work Area
+        GS_ROW_NO      TYPE LVC_S_ROID. "ALV Grid의 Row ID 정보 Work Area
+
+ DATA : G_REPID        LIKE SY-REPID ,
+        GS_VARIANTE    LIKE DISVARIANT,  "ALV Grid Layout Variant
+        GS_DEF_VARIANT LIKE DISVARIANT,  "ALV Grid 기본 Layout Variant
+        GV_VARIANT_EXIT(1) TYPE C.
+
+
+ DATA : GT_DROPDOWN TYPE LVC_T_DRAL,
+        GS_DROPDOWN TYPE LVC_S_DRAL.
+
+ DATA : GO_CL_DD_DOCUMENT TYPE REF TO CL_DD_DOCUMENT.
+ DATA : BEGIN OF GT_DOCUMENT OCCURS 0,
+          TEXT(255) TYPE C,
+        END OF GT_DOCUMENT.
+
+
+ DATA: GV_ALV_EVT TYPE  REF TO  CL_GUI_EVENT,
+       GV_ALV_OBJ TYPE  REF TO  CL_GUI_ALV_GRID,
+       GV_GUI_OBJ TYPE  REF TO  CL_GUI_CONTROL.
+
+
+ FIELD-SYMBOLS : &lt;GF_GRID&gt; TYPE ANY.
+
+
+ DATA : GV_HIERARCHY_HEADER TYPE TREEV_HHDR.
+
+
+
+
+
+
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  APPEND_EXCLUDE_FUNCTIONS*-- i.C.T.P. Denny</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : 제외할 Function Code 버튼 등록</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+
+
+
+
+ FORM APPEND_EXCLUDE_FUNCTIONS TABLES PV_TABLE USING PV_VALUE.
+   DATA : LS_EXCLUDE TYPE UI_FUNC.
+
+   LS_EXCLUDE = PV_VALUE.
+   APPEND LS_EXCLUDE TO PV_TABLE.
+
+ ENDFORM. "APPEND_EXCLUDE_FUNCTIONS
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  ROW_SCROLL</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : 해당 Row(  pv_ROW), Column(pv_NAME)으로  Scrolling 한다.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_ROW_SCROLL USING PV_NAME VALUE(PV_ROW) TYPE I
+                              PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+   DATA : V_INDEX(10) TYPE N.
+
+   "만약 이동할 Row값이 없다면 맨 끝으로 이동
+   IF PV_ROW IS INITIAL OR PV_ROW = 0.
+
+   ENDIF.
+
+   V_INDEX = PV_ROW.
+   MOVE : PV_ROW         TO GS_V_SCROLL-ROW_NO-ROW_ID     ,
+          0             TO GS_V_SCROLL-ROW_NO-SUB_ROW_ID ,
+          V_INDEX       TO GS_V_SCROLL-ROW_INFO-INDEX    ,
+          SPACE         TO GS_V_SCROLL-ROW_INFO-ROWTYPE  ,
+          PV_NAME        TO GS_V_SCROLL-COL_INFO-FIELDNAME,
+          SPACE         TO GS_V_SCROLL-COL_INFO-HIERLEVEL.
+
+   "스크롤 이동
+   CALL METHOD PV_GRID-&gt;SET_SCROLL_INFO_VIA_ID
+     EXPORTING
+       IS_COL_INFO = GS_V_SCROLL-COL_INFO
+       IS_ROW_NO   = GS_V_SCROLL-ROW_NO
+       IS_ROW_INFO = GS_V_SCROLL-ROW_INFO.
+
+ ENDFORM. "ROW_SCROLL
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  SET_SCROLL</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : SET Scrolling.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_SET_SCROLL USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+
+   CALL METHOD PV_GRID-&gt;SET_SCROLL_INFO_VIA_ID
+     EXPORTING
+       IS_COL_INFO = GS_V_ROW-COL_ID
+       IS_ROW_NO   = GS_V_ROW-ROW_NO
+       IS_ROW_INFO = GS_V_ROW-ROW_ID.
+
+ ENDFORM. "SET_SCROLL
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  GET_CURRENT_ROW*-- iCTP D.e.n.n.y</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : 커서 위치의 ROW, CELL 정보를 참조.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_GET_CURRENT_ROW USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+   "현재 Cursor가 위치한 곳의 Row, Column, Value 정보를 참조한다.
+   CALL METHOD PV_GRID-&gt;GET_CURRENT_CELL
+     IMPORTING
+       E_ROW     = GS_V_ROW-ROW
+       E_VALUE   = GS_V_ROW-VALUE
+       E_COL     = GS_V_ROW-COL
+       ES_ROW_ID = GS_V_ROW-ROW_ID
+       ES_COL_ID = GS_V_ROW-COL_ID
+       ES_ROW_NO = GS_V_ROW-ROW_NO.
+
+ ENDFORM. "GET_CURRENT_ROW
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  SELECTED_ROWS</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV에서 선택된 ROW의 ID 추출.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_SELECTED_ROWS USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+   CLEAR : GT_INDEX_ROWS, GT_ROW_NO.
+   REFRESH : GT_INDEX_ROWS, GT_ROW_NO.
+
+   "선택된 Row들의 정보를 추출한다.
+   CALL METHOD PV_GRID-&gt;GET_SELECTED_ROWS
+     IMPORTING
+       ET_INDEX_ROWS = GT_INDEX_ROWS
+       ET_ROW_NO     = GT_ROW_NO.
+
+ ENDFORM. "SELECTED_ROWS
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  CHECK_CHANGED*-- iCTP. Denny.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV DATA 변경 확인.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_CHECK_CHANGED USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+   DATA : E_VALID(1),
+          C_REFRESH(1) VALUE 'X'.
+
+   "변경 확인 및 DATA_CHANGED 이벤트 발생
+   CALL METHOD PV_GRID-&gt;CHECK_CHANGED_DATA
+     IMPORTING
+       E_VALID   = E_VALID
+     CHANGING
+       C_REFRESH = C_REFRESH.
+
+ ENDFORM. "CHECK_CHANGED
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  ALV_TABLE_REFRESH</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV를 REFRESH 한다.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+ FORM ALV_TABLE_REFRESH USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID
+ PV_STBL PV_SOFT.
+   "ALV를 Refresh 한다.
+   DATA : LS_STBL TYPE LVC_S_STBL.
+
+   IF PV_STBL EQ ABAP_TRUE.
+     LS_STBL-ROW = 'X'.
+     LS_STBL-COL = 'X'.
+   ENDIF.
+
+   CALL METHOD PV_GRID-&gt;REFRESH_TABLE_DISPLAY
+     EXPORTING
+       IS_STABLE = LS_STBL.
+
+ ENDFORM. "ALV_TABLE_REFRESH
+
+
+
+
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  FIELD_SETTING</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV FIELD SETTING작업을 수행</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_FIELD_SETTING USING PV_GUB
+                                  PV_FNAME
+                                  PV_CON.
+
+   IF   PV_GUB =  'S'.  "구분이 'S'인 경우
+     CLEAR GS_FIELDCAT.
+     "gt_field_t에 Structure 또는 Table을 참조한 Field Catalog가 있으면
+     "정보를 복사해둔다.
+     READ  TABLE GT_FIELD_T INTO GS_FIELDCAT
+           WITH KEY FIELDNAME  = PV_FNAME.
+     GS_FIELDCAT-FIELDNAME  = PV_FNAME.
+     EXIT.
+   ENDIF.
+
+   "속성들을 설정한다.
+   DATA LV_COL(40).
+   FIELD-SYMBOLS &lt;FS&gt;.
+   CONCATENATE 'GS_FIELDCAT-' PV_FNAME  INTO LV_COL.
+   ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+   MOVE         PV_CON          TO       &lt;FS&gt;.
+
+   IF PV_FNAME = 'SELTEXT_S'.
+     GS_FIELDCAT-COLDDICTXT = 'S'.
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_L'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_M'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+   ELSEIF PV_FNAME = 'SELTEXT_L'.
+     GS_FIELDCAT-COLDDICTXT = 'L'.
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_S'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_M'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+   ELSEIF PV_FNAME = 'SELTEXT_M'.
+     GS_FIELDCAT-COLDDICTXT = 'M'.
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_L'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_S'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+   ENDIF.
+
+   "구분이 'E' 인 경우 Field Catalog에 Append 한다.
+   CHECK  PV_GUB = 'E'.
+
+   "Currency Field이면서 통화에 대한 정보(CFIELDNAME, CURRENCY)가
+   "설정되어 있지 않은 경우
+   IF GS_FIELDCAT-DATATYPE  = 'CURR'.
+     IF    GS_FIELDCAT-CFIELDNAME IS INITIAL
+       AND GS_FIELDCAT-CURRENCY   IS INITIAL.
+       "참조용 Field Catalog에 통화키 필드가 있는지 확인한다.
+       READ TABLE GT_FIELD_T WITH KEY DATATYPE  = 'CUKY'.
+       IF SY-SUBRC EQ 0.
+         GS_FIELDCAT-CFIELDNAME = GT_FIELD_T-FIELDNAME.
+       ELSE.
+         "통화키 필드가 없으면 'KRW'를 기본값으로 설정
+         GS_FIELDCAT-CURRENCY  = 'KRW'.
+       ENDIF.
+     ENDIF.
+   ENDIF.
+
+   GV_COL_POS = GV_COL_POS + 1.
+   GS_FIELDCAT-COL_POS = GV_COL_POS. "ALV에서의 Field 출력 순서 Numbering
+   IF GS_FIELDCAT-OUTPUTLEN IS INITIAL.
+     GS_FIELDCAT-OUTPUTLEN = GS_FIELDCAT-INTLEN + 2.
+   ENDIF.
+
+   APPEND GS_FIELDCAT TO FIELDCAT.
+
+ ENDFORM. "FIELD_SETTING
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  FIELDCATALOG_CALL</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : 해당 Internal Table의 Field Catalog 가져오기</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_FIELDCATALOG_CALL USING PA_ITAB_NAME
+                                   PA_STRUCTURE_NAME.
+
+   DATA : LT_DATA TYPE TABLE OF RSTRUCINFO WITH HEADER LINE.
+
+   CLEAR : GT_FIELDCAT_H[], GT_FIELDCAT_H.
+
+   CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+     EXPORTING
+       I_CLIENT_NEVER_DISPLAY = 'X'
+       I_INTERNAL_TABNAME     = PA_ITAB_NAME
+<font color ="#0000FF">*       I_BYPASSING_BUFFER     = 'X'</font>
+     CHANGING
+       CT_FIELDCAT            = GT_FIELDCAT_H[]
+     EXCEPTIONS
+       INCONSISTENT_INTERFACE = 1
+       PROGRAM_ERROR          = 2
+       OTHERS                 = 3.
+
+
+   IF GT_FIELDCAT_H[] IS INITIAL.
+     CALL FUNCTION 'GET_COMPONENT_LIST'
+       EXPORTING
+         PROGRAM    = SY-CPROG
+         FIELDNAME  = PA_ITAB_NAME
+       TABLES
+         COMPONENTS = LT_DATA.
+
+     LOOP AT LT_DATA.
+       CLEAR : GT_FIELDCAT_H.
+       GT_FIELDCAT_H-FIELDNAME = LT_DATA-COMPNAME.
+       GT_FIELDCAT_H-OUTPUTLEN = LT_DATA-OLEN.
+       APPEND : GT_FIELDCAT_H.
+     ENDLOOP.
+   ENDIF.
+
+ ENDFORM. "alv_fieldcatalog_call
+
+
+
+
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  FIELD_SETTING_CALL</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV FIELD SETTING작업을 수행</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+ FORM ALV_FIELD_SETTING_CALL USING PV_GUB
+                                     PV_FNAME
+                                     PV_CON.
+
+   "구분이 'S' 인 경우      gt_fieldcat_h에서 해당 Field 속성을 복사한다.
+   IF   PV_GUB =  'S'.
+     CLEAR GS_FIELDCAT.
+     READ  TABLE GT_FIELDCAT_H WITH KEY FIELDNAME  = PV_FNAME.
+     MOVE-CORRESPONDING GT_FIELDCAT_H TO GS_FIELDCAT.
+     GS_FIELDCAT-FIELDNAME  = PV_FNAME.
+     GS_FIELDCAT-COL_OPT = 'X'.
+     "gt_fieldcat_h와 gs_fieldcat에서 Name이 다른 Field 정보를 넘겨준다.
+     EXIT.
+   ENDIF.
+
+   IF PV_FNAME EQ 'OUTPUTLEN'.
+     CLEAR : GS_FIELDCAT-COL_OPT.
+   ENDIF.
+
+   "각 Field 속성을 설정한다.
+   DATA LV_COL(40).
+   FIELD-SYMBOLS &lt;FS&gt;.
+
+   IF PV_FNAME = 'SELTEXT_S'.
+     GS_FIELDCAT-COLDDICTXT = 'S'.
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_S'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_L'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_M'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+   ELSEIF PV_FNAME = 'SELTEXT_L'.
+     GS_FIELDCAT-COLDDICTXT = 'L'.
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_S'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_L'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_M'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+   ELSEIF PV_FNAME = 'SELTEXT_M'.
+     GS_FIELDCAT-COLDDICTXT = 'M'.
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_S'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_L'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     CONCATENATE 'GS_FIELDCAT-' 'SCRTEXT_M'  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+   ELSE.
+     CONCATENATE 'GS_FIELDCAT-' PV_FNAME  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+   ENDIF.
+
+   "구분이 'E'인 경우 Field Catalog에 추가한다.
+   CHECK  PV_GUB = 'E'.
+
+   IF GS_FIELDCAT-DATATYPE  = 'CURR'.
+     IF    GS_FIELDCAT-CFIELDNAME IS INITIAL
+       AND GS_FIELDCAT-CURRENCY   IS INITIAL.
+       READ TABLE GT_FIELDCAT_H WITH KEY DATATYPE  = 'CUKY'.
+       IF SY-SUBRC EQ 0.
+         GS_FIELDCAT-CFIELDNAME = GT_FIELDCAT_H-FIELDNAME.
+       ELSE.
+         GS_FIELDCAT-CURRENCY  = 'KRW'.
+       ENDIF.
+     ENDIF.
+   ENDIF.
+
+   GS_FIELDCAT-REPTEXT    = GS_FIELDCAT-SCRTEXT_L.
+   GS_FIELDCAT-DFIELDNAME = GS_FIELDCAT-SCRTEXT_M.
+
+<font color ="#0000FF">*</font>
+   GV_COL_POS = GV_COL_POS + 1.
+   GS_FIELDCAT-COL_POS = GV_COL_POS.
+   IF GS_FIELDCAT-OUTPUTLEN IS INITIAL.
+     GS_FIELDCAT-OUTPUTLEN = GS_FIELDCAT-INTLEN + 2.
+   ENDIF.
+
+   APPEND GS_FIELDCAT TO FIELDCAT.
+
+ ENDFORM. "FIELD_SETTING_CALL
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  SORT_SETTING</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV Sort Catalog를 구성한다.</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_SORT_SETTING USING PV_GUB
+                                 PV_FNAME
+                                 PV_CON.
+   DATA : LV_COL(40).
+
+   FIELD-SYMBOLS &lt;FS&gt;.
+
+   IF PV_GUB = 'S'.
+     CLEAR GS_SORT.
+
+     CONCATENATE 'GS_SORT-' PV_FNAME  INTO LV_COL.
+     ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+     MOVE         PV_CON          TO       &lt;FS&gt;.
+
+     EXIT.
+   ENDIF.
+
+   "Sort Catalog 속성을 설정한다.
+   CONCATENATE 'GS_SORT-' PV_FNAME  INTO LV_COL.
+   ASSIGN      (LV_COL)         TO       &lt;FS&gt;.
+   MOVE         PV_CON          TO       &lt;FS&gt;.
+
+   " Sort Catalog에 추가한다.
+   CHECK  PV_GUB = 'E'.
+   APPEND GS_SORT TO GT_SORT.
+ ENDFORM. "SORT_SETTING
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  DESTROY_OBJECT</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV Object가 사용하던 Resource를 시스템에 반환한다.</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_DESTROY_OBJECT USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID
+                                PV_CONT TYPE REF TO
+                                CL_GUI_CUSTOM_CONTAINER.
+   IF NOT PV_GRID IS INITIAL.
+     CALL METHOD PV_GRID-&gt;FREE.
+     CLEAR PV_GRID.
+   ENDIF.
+
+   IF NOT PV_CONT IS INITIAL.
+     CALL METHOD PV_CONT-&gt;FREE.
+     CLEAR PV_CONT.
+   ENDIF.
+
+
+ ENDFORM. "DESTROY_OBJECT
+
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  alv_destroy_grid_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;PV_GRID    text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+ FORM ALV_DESTROY_GRID_OBJECT USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+   IF NOT PV_GRID IS INITIAL.
+     CALL METHOD PV_GRID-&gt;FREE.
+     CLEAR PV_GRID.
+   ENDIF.
+
+ ENDFORM. "DESTROY_OBJECT
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  CHECK_CHANGED_DATA</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV상의 데이터 변경이 있는지 확인한다.</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_CHECK_CHANGED_DATA USING PV_GRID TYPE REF TO CL_GUI_ALV_GRID.
+   DATA : E_VALID(1),
+          C_REFRESH(1) VALUE 'X'.
+
+   "변경 확인 및 DATA_CHANGED 이벤트 발생
+   CALL METHOD PV_GRID-&gt;CHECK_CHANGED_DATA
+     IMPORTING
+       E_VALID   = E_VALID
+     CHANGING
+       C_REFRESH = C_REFRESH.
+ ENDFORM. "alv_check_changed_data
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  ALV_SETTING</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV 기본값을 설정한다.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_INIT_SETTING.
+   CLEAR GS_VARIANTE.
+   GV_VARIANT-REPORT   = G_REPID = SY-REPID.
+   GV_VARIANT-USERNAME = SY-UNAME.
+
+   GV_VARIANT-handle    = 1.
+ ENDFORM. "P1000_ALV_SETTING
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  VARIANT_DEFAULT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : ALV Layout의 기본값을 가져온다.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_VARIANT_DEFAULT USING PV_VARIA.
+   GS_DEF_VARIANT = GV_VARIANT.
+   IF NOT PV_VARIA IS INITIAL.
+     GS_DEF_VARIANT-VARIANT = PV_VARIA.
+   ENDIF.
+
+   "기본 설정
+   CALL FUNCTION 'LVC_VARIANT_DEFAULT_GET'
+     EXPORTING
+       I_SAVE        = 'A'
+     CHANGING
+       CS_VARIANT    = GS_DEF_VARIANT
+     EXCEPTIONS
+       WRONG_INPUT   = 1
+       NOT_FOUND     = 2
+       PROGRAM_ERROR = 3
+       OTHERS        = 4.
+
+   CASE SY-SUBRC.
+     WHEN 0.
+       PV_VARIA = GS_DEF_VARIANT-VARIANT.
+     WHEN 2.
+       CLEAR PV_VARIA.
+       SELECT SINGLE LTDX~VARIANT
+         INTO PV_VARIA
+         FROM LTDX
+        WHERE LTDX~RELID   EQ 'LT'
+          AND LTDX~REPORT  EQ G_REPID
+          AND LTDX~ERFNAME EQ SY-UNAME.
+   ENDCASE.
+ ENDFORM. "P1010_VARIANT_DEFAULT
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  VARIANT_HELP</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : Layout 탐색도움말을 띄운다.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_VARIANT_HELP USING PV_VARIANT LIKE DISVARIANT-VARIANT.
+
+   CALL FUNCTION 'LVC_VARIANT_F4'
+     EXPORTING
+       IS_VARIANT    = GV_VARIANT
+       I_SAVE        = 'A'
+     IMPORTING
+       E_EXIT        = GV_VARIANT_EXIT
+       ES_VARIANT    = GS_DEF_VARIANT
+     EXCEPTIONS
+       NOT_FOUND     = 1
+       PROGRAM_ERROR = 2
+       OTHERS        = 3.
+
+   IF SY-SUBRC NE 0.
+     MESSAGE I004(Z00CAM).
+   ENDIF.
+
+   IF GV_VARIANT_EXIT IS INITIAL.
+     GS_VARIANTE-VARIANT = GS_DEF_VARIANT-VARIANT.
+     PV_VARIANT        = GS_DEF_VARIANT-VARIANT.
+   ENDIF.
+ ENDFORM. "P1020_VARIANT_HELP
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  VARIANT_FILL</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : 레이아웃 체크</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_VARIANT_FILL USING PV_VARIA LIKE DISVARIANT-VARIANT.
+   CLEAR GS_VARIANTE.
+   IF PV_VARIA IS INITIAL.
+     GS_VARIANTE-VARIANT = 'STANDARD'.
+     GS_VARIANTE-REPORT  = G_REPID.
+   ELSE.
+     GS_VARIANTE-VARIANT = PV_VARIA.
+     GS_VARIANTE-REPORT  = G_REPID.
+
+     CALL FUNCTION 'LVC_VARIANT_EXISTENCE_CHECK'
+       EXPORTING
+         I_SAVE     = 'A'
+       CHANGING
+         CS_VARIANT = GS_VARIANTE
+       EXCEPTIONS
+         OTHERS     = 01.
+
+     IF SY-SUBRC NE 0.
+       MESSAGE E020(Z00CAM).
+     ENDIF.
+   ENDIF.
+ ENDFORM. "P1030_VARIANT_FILL
+
+
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* FORM  FIELDCATALOG_MERGE</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* TEXT : 해당 Structure 또는 Table을 참조하여 Field Catalog 가져오기</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_FIELDCATALOG_MERGE USING PV_TABLE.
+
+   "pv_table은 ABAP Dictionary 상의 Structure 또는 Table 이다.
+   CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+     EXPORTING
+       I_STRUCTURE_NAME = PV_TABLE
+     CHANGING
+       CT_FIELDCAT      = GT_FIELDCAT_H[].
+ ENDFORM. "P1080_FIELDCATALOG_MERGE
+
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV_GET_EVENT_GRID</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text: 이벤트를 호출한 Grid를 알아 낸다</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+
+ FORM ALV_GET_EVENT_GRID .
+   CLEAR : GV_ALV_EVT, GV_GUI_OBJ.
+   GV_ALV_EVT = CL_GUI_ALV_GRID=&gt;CUR_EVENT.
+
+   CHECK GV_ALV_EVT IS NOT INITIAL.
+   GV_GUI_OBJ = GV_ALV_EVT-&gt;EVENT_SRC.
+ ENDFORM. " ALV_GET_EVENT_GRID
+
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV_SET_F4_FIELD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text : 탐색 도움말 필드 셋팅</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+
+
+ FORM ALV_SET_F4_FIELD USING PV_FIELD.                 "F4 생성할 필드
+
+   GS_ALV_F4-FIELDNAME   = PV_FIELD.
+   GS_ALV_F4-REGISTER    = 'X'.
+   GS_ALV_F4-CHNGEAFTER  = 'X'.
+   INSERT  GS_ALV_F4  INTO TABLE GT_ALV_F4.
+
+ ENDFORM. " ALV_SET_F4_FIELD
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  LOCK_ALV_FIELD_ITEM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_PA_CELLTAB  text</font>
+<font color ="#0000FF">*      --&gt;P_0426   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+ FORM ALV_LOCK_FIELD_ITEM USING PT_CELLTAB TYPE LVC_T_STYL
+                                     PV_FIELD_NAME TYPE LVC_FNAME.
+
+   DATA : LS_CELLTAB TYPE LVC_S_STYL.
+
+   LS_CELLTAB-FIELDNAME = PV_FIELD_NAME.
+   LS_CELLTAB-STYLE = CL_GUI_ALV_GRID=&gt;MC_STYLE_DISABLED.
+   INSERT LS_CELLTAB INTO TABLE PT_CELLTAB.
+
+
+ ENDFORM. " LOCK_ALV_FIELD_ITEM
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  LOCK_ALV_FIELD_ITEM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_PA_CELLTAB  text</font>
+<font color ="#0000FF">*      --&gt;P_0426   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+ FORM ALV_UNLOCK_FIELD_ITEM USING PT_CELLTAB TYPE LVC_T_STYL
+                                     PV_FIELD_NAME TYPE LVC_FNAME.
+
+   DATA : LS_CELLTAB TYPE LVC_S_STYL.
+
+   DELETE PT_CELLTAB WHERE FIELDNAME = PV_FIELD_NAME.
+
+
+ ENDFORM. " LOCK_ALV_FIELD_ITEM
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  LOCK_ALV_FIELD_ITEM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_PA_CELLTAB  text</font>
+<font color ="#0000FF">*      --&gt;P_0426   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+ FORM ALV_SET_FIELD_COLOR USING PT_CELLCOLOR TYPE LVC_T_SCOL
+                                    PV_COLOR      TYPE I
+                                    PV_FIELD_NAME.
+
+
+
+   DATA : LS_CELLCOLOR       TYPE LVC_S_SCOL.
+
+   LS_CELLCOLOR-COLOR-COL = PV_COLOR.
+   LS_CELLCOLOR-FNAME = PV_FIELD_NAME.
+   APPEND LS_CELLCOLOR TO PT_CELLCOLOR.
+
+ ENDFORM. "alv_set_field_color
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  alv_global_splitter_object</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;PA_DCON    text</font>
+<font color ="#0000FF">*      --&gt;PA_TOP     text</font>
+<font color ="#0000FF">*      --&gt;PA_BOTTOM  text</font>
+<font color ="#0000FF">*      --&gt;PV_HEIGHT  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+ FORM ALV_GLOBAL_SPLITTER_OBJECT USING PA_DCON TYPE REF TO
+ CL_GUI_DOCKING_CONTAINER
+                                 PA_TOP   TYPE REF TO CL_GUI_CONTAINER
+                                 PA_BOTTOM TYPE REF TO CL_GUI_CONTAINER
+                                 PV_HEIGHT.
+
+
+<font color ="#0000FF">*--상/하 분리</font>
+
+
+   CREATE OBJECT GS_SPLITTER
+     EXPORTING
+       PARENT  = PA_DCON
+       ROWS    = 2
+       COLUMNS = 1.
+
+
+
+
+<font color ="#0000FF">* Set Top container</font>
+
+
+   CALL METHOD GS_SPLITTER-&gt;GET_CONTAINER
+     EXPORTING
+       ROW       = 1
+       COLUMN    = 1
+     RECEIVING
+       CONTAINER = PA_TOP.
+
+
+
+<font color ="#0000FF">* Set Bottom container</font>
+
+
+   CALL METHOD GS_SPLITTER-&gt;GET_CONTAINER
+     EXPORTING
+       ROW       = 2
+       COLUMN    = 1
+     RECEIVING
+       CONTAINER = PA_BOTTOM.
+
+   IF PV_HEIGHT IS INITIAL.
+     PV_HEIGHT = 15.
+   ENDIF.
+
+   GS_SPLITTER-&gt;SET_ROW_HEIGHT( ID = 1 HEIGHT = PV_HEIGHT ).
+
+ ENDFORM. "alv_splitter_object
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  alv_create_cc_document</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;PT_DOC     text</font>
+<font color ="#0000FF">*      --&gt;PA_CONS    text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+ FORM ALV_GLOBAL_CREATE_DOCUMENT TABLES PT_DOC STRUCTURE GT_DOCUMENT
+                               USING PA_DOC TYPE REF TO CL_DD_DOCUMENT
+                                     PA_CONS TYPE REF TO
+                                     CL_GUI_CONTAINER.
+
+   CHECK PT_DOC[] IS NOT INITIAL.
+
+   IF PA_DOC IS INITIAL.
+     CREATE OBJECT PA_DOC
+       EXPORTING
+         STYLE = 'ALV_GRID'.
+   ELSE.
+     CALL METHOD PA_DOC-&gt;INITIALIZE_DOCUMENT.
+   ENDIF.
+
+   LOOP AT PT_DOC.
+     IF SY-TABIX NE 1.
+       CALL METHOD PA_DOC-&gt;NEW_LINE.
+     ENDIF.
+
+     CALL METHOD PA_DOC-&gt;ADD_TEXT
+       EXPORTING
+         TEXT = PT_DOC-TEXT.
+   ENDLOOP.
+
+<font color ="#0000FF">* Display the data</font>
+   CALL METHOD PA_DOC-&gt;DISPLAY_DOCUMENT
+     EXPORTING
+       PARENT        = PA_CONS
+       REUSE_CONTROL = ABAP_TRUE.
+
+
+ ENDFORM.                    " ALV_CREATE_DOCUMENT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CREATE_HIERARCHY</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_PT_OUTPUT  text</font>
+<font color ="#0000FF">*      --&gt;P_PA_TREE  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+ FORM CREATE_TREE_HIERARCHY  TABLES   PT_DATA
+                          USING   PA_TREE TYPE REF TO CL_GUI_ALV_TREE.
+   CONSTANTS : LC_NKEY(4) TYPE C VALUE 'NKEY',
+               LC_PKEY(4) TYPE C VALUE 'PKEY',
+               LC_NTEXT(5) TYPE C VALUE 'NTEXT',
+               LC_NODE(6)  TYPE C VALUE '__NODE'.
+
+   TYPES : BEGIN OF LTY_NODES,
+            KEY  TYPE C LENGTH 128,
+            NODE TYPE LVC_NKEY,
+           END OF LTY_NODES.
+
+   DATA : LW_STRUCT_TYPE  TYPE REF TO CL_ABAP_STRUCTDESCR,
+          LT_FIELD        TYPE ABAP_COMPDESCR_TAB.
+
+   DATA : LV_NODE TYPE LVC_NKEY,
+          LT_NODES TYPE TABLE OF LTY_NODES WITH HEADER LINE.
+
+   FIELD-SYMBOLS : &lt;FS&gt;, &lt;FS_PKEY&gt;, &lt;FS_NKEY&gt;, &lt;FS_NTEXT&gt;.
+
+
+   LW_STRUCT_TYPE ?= CL_ABAP_TYPEDESCR=&gt;DESCRIBE_BY_DATA( PT_DATA ).
+   LT_FIELD[] = LW_STRUCT_TYPE-&gt;COMPONENTS.
+
+   SORT LT_FIELD BY NAME.
+   READ TABLE LT_FIELD WITH KEY NAME = LC_NKEY BINARY SEARCH
+   TRANSPORTING NO FIELDS.
+   IF SY-SUBRC NE 0.
+     MESSAGE E001(00) WITH
+        'Internal 테이블에 NKEY(Node Key) Field가 없습니다'.
+   ENDIF.
+
+   READ TABLE LT_FIELD WITH KEY NAME = LC_PKEY BINARY SEARCH
+   TRANSPORTING NO FIELDS.
+   IF SY-SUBRC NE 0.
+     MESSAGE E001(00) WITH
+        'Internal 테이블에 PKEY(Parent Key) Field가 없습니다'.
+   ENDIF.
+
+   READ TABLE LT_FIELD WITH KEY NAME = LC_NTEXT BINARY SEARCH
+   TRANSPORTING NO FIELDS.
+   IF SY-SUBRC NE 0.
+     MESSAGE E001(00) WITH
+        'Internal 테이블에 NTEXT(Node Text) Field가 없습니다'.
+   ENDIF.
+
+
+   LOOP AT PT_DATA.
+     ASSIGN COMPONENT : LC_NODE OF STRUCTURE PT_DATA TO &lt;FS&gt;,
+                        LC_NKEY OF STRUCTURE PT_DATA TO &lt;FS_NKEY&gt;,
+                        LC_PKEY OF STRUCTURE PT_DATA TO &lt;FS_PKEY&gt;,
+                        LC_NTEXT OF STRUCTURE PT_DATA TO &lt;FS_NTEXT&gt;.
+     CHECK SY-SUBRC EQ 0.
+
+     SORT LT_NODES BY KEY.
+
+     CLEAR : LT_NODES.
+     READ TABLE LT_NODES WITH KEY KEY = &lt;FS_PKEY&gt; BINARY SEARCH.
+     IF SY-SUBRC EQ 0.
+       LV_NODE = LT_NODES-NODE.
+     ELSE.
+       CLEAR : LV_NODE.
+     ENDIF.
+     PERFORM ADD_TREE_NODE USING PT_DATA LV_NODE &lt;FS_NTEXT&gt; PA_TREE
+     CHANGING  &lt;FS&gt;.
+
+     CLEAR : LT_NODES.
+     LT_NODES-KEY = &lt;FS_NKEY&gt;.
+     LT_NODES-NODE = &lt;FS&gt;.
+     APPEND LT_NODES.
+
+     MODIFY PT_DATA.
+
+   ENDLOOP.
+
+   CALL METHOD PA_TREE-&gt;FRONTEND_UPDATE.
+
+ ENDFORM.                    " CREATE_HIERARCHY
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ADD_TREE_NODE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_PT_OUTPUT  text</font>
+<font color ="#0000FF">*      --&gt;P_&lt;FS_PKEY&gt;  text</font>
+<font color ="#0000FF">*      --&gt;P_&lt;FS_NKEY&gt;  text</font>
+<font color ="#0000FF">*      --&gt;P_PA_TREE  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+ FORM ADD_TREE_NODE  USING    PW_OUTPUT
+                               PV_PARENT
+                               PV_NTEXT
+                               PA_TREE TYPE REF TO CL_GUI_ALV_TREE
+                       CHANGING PV_NODE_KEY.
+
+   DATA: LV_NODE_TEXT TYPE LVC_VALUE.
+   DATA: LT_ITEM_LAYOUT TYPE LVC_T_LAYI,
+         LS_ITEM_LAYOUT TYPE LVC_S_LAYI,
+         LS_NODE_LAYOUT TYPE LVC_S_LAYN.
+
+   FIELD-SYMBOLS &lt;FS&gt;.
+   LV_NODE_TEXT =  PV_NTEXT.
+
+   CLEAR : LT_ITEM_LAYOUT, LS_ITEM_LAYOUT, LS_NODE_LAYOUT.
+
+   ASSIGN COMPONENT 'ICON' OF STRUCTURE PW_OUTPUT TO &lt;FS&gt;.
+   IF SY-SUBRC EQ 0.
+     LS_NODE_LAYOUT-EXP_IMAGE = LS_NODE_LAYOUT-N_IMAGE = &lt;FS&gt;.
+   ENDIF.
+   LS_ITEM_LAYOUT-FIELDNAME = PA_TREE-&gt;C_HIERARCHY_COLUMN_NAME.
+   APPEND LS_ITEM_LAYOUT TO LT_ITEM_LAYOUT.
+
+   CALL METHOD PA_TREE-&gt;ADD_NODE
+     EXPORTING
+       I_RELAT_NODE_KEY = PV_PARENT
+       I_RELATIONSHIP   = CL_GUI_COLUMN_TREE=&gt;RELAT_LAST_CHILD
+       I_NODE_TEXT      = LV_NODE_TEXT
+       IS_OUTTAB_LINE   = PW_OUTPUT
+       IS_NODE_LAYOUT   = LS_NODE_LAYOUT
+       IT_ITEM_LAYOUT   = LT_ITEM_LAYOUT
+     IMPORTING
+       E_NEW_NODE_KEY   = PV_NODE_KEY.
+
+
+ ENDFORM.                    " ADD_TREE_NODE
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  COPY_ALV_TREE_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_PT_OUTPUT  text</font>
+<font color ="#0000FF">*      --&gt;P_&lt;FT_DATA&gt;  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+
+ FORM COPY_ALV_TREE_DATA  TABLES   PT_OUTPUT PT_DATA.
+
+   CONSTANTS : LC_NKEY(4) TYPE C VALUE 'NKEY',
+               LC_PKEY(4) TYPE C VALUE 'PKEY',
+               LC_NTEXT(5) TYPE C VALUE 'NTEXT',
+               LC_NODE(6)  TYPE C VALUE '__NODE'.
+   DATA : LV_DATA_REF     TYPE REF TO DATA,
+          LW_STRUCT_TYPE  TYPE REF TO CL_ABAP_STRUCTDESCR,
+          LT_FIELD        TYPE ABAP_COMPDESCR_TAB,
+          LT_COMP_TAB     TYPE CL_ABAP_STRUCTDESCR=&gt;COMPONENT_TABLE,
+          LW_COMP         LIKE LINE OF LT_COMP_TAB.
+
+   DATA : LV_NODE TYPE LVC_NKEY.
+
+   FIELD-SYMBOLS : &lt;FS_PKEY&gt;, &lt;FS_NKEY&gt;, &lt;FS_NTEXT&gt;,
+
+                   &lt;FT_DATA&gt; TYPE STANDARD TABLE,
+                   &lt;FW_DATA&gt; TYPE ANY.
+
+   ASSIGN PT_DATA TO &lt;FT_DATA&gt;.
+
+   LW_STRUCT_TYPE ?= CL_ABAP_TYPEDESCR=&gt;DESCRIBE_BY_DATA( PT_OUTPUT ).
+   LT_FIELD[] = LW_STRUCT_TYPE-&gt;COMPONENTS.
+
+   SORT LT_FIELD BY NAME.
+   READ TABLE LT_FIELD WITH KEY NAME = LC_NKEY BINARY SEARCH
+   TRANSPORTING NO FIELDS.
+   IF SY-SUBRC NE 0.
+     MESSAGE E001(00) WITH
+          'Internal 테이블에 NKEY(Node Key) Field가 없습니다'.
+   ENDIF.
+
+   READ TABLE LT_FIELD WITH KEY NAME = LC_PKEY BINARY SEARCH
+   TRANSPORTING NO FIELDS.
+   IF SY-SUBRC NE 0.
+     MESSAGE E001(00) WITH
+          'Internal 테이블에 PKEY(Parent Key) Field가 없습니다'.
+   ENDIF.
+
+   READ TABLE LT_FIELD WITH KEY NAME = LC_NTEXT BINARY SEARCH
+   TRANSPORTING NO FIELDS.
+   IF SY-SUBRC NE 0.
+     MESSAGE E001(00) WITH
+          'Internal 테이블에 NTEXT(Node Text) Field가 없습니다'.
+   ENDIF.
+
+
+   LT_COMP_TAB = LW_STRUCT_TYPE-&gt;GET_COMPONENTS( ).
+
+   CLEAR : LW_COMP.
+   LW_COMP-NAME = LC_NODE.
+   LW_COMP-TYPE ?= CL_ABAP_TYPEDESCR=&gt;DESCRIBE_BY_DATA( LV_NODE ).
+   APPEND LW_COMP TO LT_COMP_TAB.
+
+   LW_STRUCT_TYPE = CL_ABAP_STRUCTDESCR=&gt;CREATE( LT_COMP_TAB ).
+   CREATE DATA LV_DATA_REF TYPE HANDLE LW_STRUCT_TYPE.
+   ASSIGN LV_DATA_REF-&gt;* TO  &lt;FW_DATA&gt;.
+   CREATE DATA LV_DATA_REF LIKE STANDARD TABLE OF &lt;FW_DATA&gt;.
+   ASSIGN LV_DATA_REF-&gt;* TO &lt;FT_DATA&gt;.
+   FREE LV_DATA_REF.
+
+   LOOP AT PT_OUTPUT.
+     CLEAR : &lt;FW_DATA&gt;.
+     MOVE-CORRESPONDING PT_OUTPUT TO &lt;FW_DATA&gt;.
+     APPEND &lt;FW_DATA&gt; TO &lt;FT_DATA&gt;.
+   ENDLOOP.
+
+
+
+<font color ="#0000FF">*   pt_data = &lt;ft_data&gt;.</font>
+
+
+
+ ENDFORM.                    " COPY_ALV_TREE_DATA
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

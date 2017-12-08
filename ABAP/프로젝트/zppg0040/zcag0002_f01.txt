@@ -1,0 +1,1184 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZCAG0000_F01
+*&---------------------------------------------------------------------*
+
+TABLES : SSCRFIELDS,  CKMLCR,  CKMLPP.
+DATA : GV_FUNC TYPE STRING.
+
+
+TYPE-POOLS : OLE2.
+
+*----------------------------------------------------------------------*
+* Common Macro
+*----------------------------------------------------------------------*
+DEFINE $$CONV_EXIT_INPUT.
+  CONCATENATE 'CONVERSION_EXIT_' &1 '_INPUT' INTO GV_FUNC.
+  CALL FUNCTION GV_FUNC
+    EXPORTING
+      INPUT  = &2
+    IMPORTING
+      OUTPUT = &3
+    EXCEPTIONS
+      OTHERS = 1.
+END-OF-DEFINITION.
+
+
+DEFINE $$CONV_EXIT_OUTPUT.
+  CONCATENATE 'CONVERSION_EXIT_' &1 '_OUTPUT' INTO GV_FUNC.
+  CALL FUNCTION GV_FUNC
+    EXPORTING
+      INPUT  = &2
+    IMPORTING
+      OUTPUT = &3
+    EXCEPTIONS
+      OTHERS = 1.
+END-OF-DEFINITION.
+
+
+DEFINE $$APPEND_RANGES.
+  CLEAR : &1.
+  &1-SIGN = &2.
+  &1-OPTION = &3.
+  &1-LOW = &4.
+  &1-HIGH = &5.
+  APPEND &1.
+END-OF-DEFINITION.
+
+DEFINE $$READ_TABLE.
+  CLEAR : &4.
+  READ TABLE &4 WITH KEY &5 = &1-&2 BINARY SEARCH.
+  IF SY-SUBRC EQ 0.
+    &1-&3 = &4-&6.
+  ENDIF.
+END-OF-DEFINITION.
+
+
+DEFINE $$SET_CELLTAB.
+  &1-FIELDNAME = &3.
+  &1-STYLE = CL_GUI_ALV_GRID=>MC_STYLE_ENABLED.
+  INSERT &1 INTO TABLE &2.
+END-OF-DEFINITION.
+
+
+DEFINE $$DATE_USER.
+  CASE &1.
+    WHEN 'C' OR 'A'.
+      &2-ERDAT    = SY-DATUM.
+      &2-ERZET    = SY-UZEIT.
+      &2-ERNAM    = SY-UNAME.
+      &2-ERDATLO  = SY-DATLO.
+      &2-ERZETLO  = SY-TIMLO.
+    WHEN 'M' OR 'A'.
+      &2-AEDAT    = SY-DATUM.
+      &2-AEZET    = SY-UZEIT.
+      &2-AENAM    = SY-UNAME.
+      &2-AEDATLO  = SY-DATLO.
+      &2-AEZETLO  = SY-TIMLO.
+  ENDCASE.
+END-OF-DEFINITION.
+
+DEFINE  $$CLEAR.
+  CLEAR &1.
+  REFRESH &1.
+END-OF-DEFINITION.
+
+DEFINE $$BDC_DYNPRO.
+  CLEAR  &1.
+  &1-PROGRAM  = &2.
+  &1-DYNPRO   = &3.
+  &1-DYNBEGIN = 'X'.
+  APPEND &1.
+END-OF-DEFINITION.
+
+DEFINE $$BDC_FIELD.
+  CLEAR  &1.
+  &1-FNAM = &2.
+  &1-FVAL = &3.
+  APPEND &1.
+END-OF-DEFINITION.
+
+
+
+*----------------------------------------------------------------------*
+* File 관련
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  alsm_excel_upload
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->XLS_DATA1  text
+*      -->P_FILENM   text
+*      -->P_SCOL     text
+*      -->P_SROW     text
+*      -->P_ECOL     text
+*      -->P_EROW     text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  FIND_FOLDER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FIND_FOLDER USING PV_FNAME.
+  CLEAR PV_FNAME.
+  CALL FUNCTION 'F4_FILENAME'
+    EXPORTING
+      PROGRAM_NAME  = ''
+      DYNPRO_NUMBER = ''
+      FIELD_NAME    = 'FILENAME'
+    IMPORTING
+      FILE_NAME     = PV_FNAME.
+
+ENDFORM. " FIND_FOLDER
+
+*&---------------------------------------------------------------------*
+*&      Form  ALSM_EXCEL_UPLOAD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->XLS_DATA1  text
+*      -->P_FILENM   text
+*      -->P_SCOL     text
+*      -->P_SROW     text
+*      -->P_ECOL     text
+*      -->P_EROW     text
+*----------------------------------------------------------------------*
+FORM ALSM_EXCEL_UPLOAD TABLES XLS_DATA1
+                          USING  P_FILENM P_SCOL P_SROW P_ECOL P_EROW.
+
+
+
+* (1,1) (256, 65536)
+
+
+  CLEAR:   XLS_DATA1.
+  REFRESH: XLS_DATA1.
+
+  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+    EXPORTING
+      FILENAME                = P_FILENM
+      I_BEGIN_COL             = P_SCOL
+      I_BEGIN_ROW             = P_SROW
+      I_END_COL               = P_ECOL
+      I_END_ROW               = P_EROW
+    TABLES
+      INTERN                  = XLS_DATA1
+    EXCEPTIONS
+      INCONSISTENT_PARAMETERS = 1
+      UPLOAD_OLE              = 2
+      OTHERS                  = 3.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE I002(ZCAGM) WITH 'Error Opening File:' P_FILENM.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+ENDFORM. "alsm_excel_upload
+
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  kcd_excel_upload
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->XLS_DATA1  text
+*      -->P_FILENM   text
+*      -->P_SCOL     text
+*      -->P_SROW     text
+*      -->P_ECOL     text
+*      -->P_EROW     text
+*----------------------------------------------------------------------*
+
+
+FORM KCD_EXCEL_UPLOAD TABLES XLS_DATA1
+                          USING  P_FILENM P_SCOL P_SROW P_ECOL P_EROW.
+
+
+* (1,1) (256, 65536)
+
+
+
+  CLEAR:   XLS_DATA1.
+  REFRESH: XLS_DATA1.
+
+  CALL FUNCTION 'KCD_EXCEL_OLE_TO_INT_CONVERT'
+    EXPORTING
+      FILENAME                = P_FILENM
+      I_BEGIN_COL             = P_SCOL
+      I_BEGIN_ROW             = P_SROW
+      I_END_COL               = P_ECOL
+      I_END_ROW               = P_EROW
+    TABLES
+      INTERN                  = XLS_DATA1
+    EXCEPTIONS
+      INCONSISTENT_PARAMETERS = 1
+      UPLOAD_OLE              = 2
+      OTHERS                  = 3.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE I002(ZCOEMSG) WITH 'Error Opening File:' P_FILENM.
+    STOP.
+  ENDIF.
+ENDFORM. " p2012_upload
+
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  sample_download
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->VALUE          text
+*      -->(PV_DOCNAME)   text
+*      -->VALUE          text
+*      -->(PV_FILENAME)  text
+*----------------------------------------------------------------------*
+FORM SAMPLE_DOWNLOAD USING VALUE(PV_DOCNAME) VALUE(PV_FILENAME).
+  DATA : LT_DOC_TABLE LIKE W3MIME OCCURS 0.
+  DATA : EXCEL TYPE OLE2_OBJECT,
+         BOOKS TYPE OLE2_OBJECT,
+         CELL  TYPE OLE2_OBJECT.
+
+  DATA : LV_DOC_SIZE     TYPE I,
+         LV_DOC_TYPE(80) VALUE 'Excel.Sheet',
+         LV_DOC_FORMAT(80).
+
+  DATA : LV_FILENAME_1 TYPE STRING,
+         LV_FILENAME_2(100).
+
+
+* 2진 파일로 다운로드
+  CALL FUNCTION 'SAP_OI_LOAD_MIME_DATA'
+    EXPORTING
+      OBJECT_ID        = PV_DOCNAME
+    IMPORTING
+      DATA_SIZE        = LV_DOC_SIZE
+      DOCUMENT_FORMAT  = LV_DOC_FORMAT
+      DOCUMENT_TYPE    = LV_DOC_TYPE
+    TABLES
+      DATA_TABLE       = LT_DOC_TABLE
+    EXCEPTIONS
+      OBJECT_NOT_FOUND = 1
+      INTERNAL_ERROR   = 2
+      OTHERS           = 3.
+
+
+
+* 파일 경로 지정
+  CONCATENATE PV_FILENAME '.xls' INTO LV_FILENAME_1.
+
+  CALL FUNCTION 'WS_FILENAME_GET'
+    EXPORTING
+      DEF_FILENAME     = LV_FILENAME_1    " POP-UP 창의 초기 FILENAME
+      DEF_PATH         = 'C:\'            " 초기 파일 경로
+      MASK             = ',*.xls,*.XLS.'
+      MODE             = 'S'
+      TITLE            = ' '
+    IMPORTING
+      FILENAME         = LV_FILENAME_2
+    EXCEPTIONS
+      SELECTION_CANCEL = 3
+      OTHERS           = 5.
+
+  CHECK SY-SUBRC EQ 0.
+  LV_FILENAME_1 = LV_FILENAME_2.
+
+
+
+* EXCEL 파일 다운로드
+  CALL FUNCTION 'GUI_DOWNLOAD'
+    EXPORTING
+      FILENAME         = LV_FILENAME_1
+      FILETYPE         = 'BIN'
+      BIN_FILESIZE     = LV_DOC_SIZE
+    TABLES
+      DATA_TAB         = LT_DOC_TABLE
+    EXCEPTIONS
+      FILE_OPEN_ERROR  = 1
+      FILE_WRITE_ERROR = 2
+      INVALID_FILESIZE = 3
+      INVALID_TYPE     = 5
+      NO_BATCH         = 6
+      UNKNOWN_ERROR    = 7.
+
+
+ENDFORM. "sample_download
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_xls_filename
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_FILENAME  text
+*----------------------------------------------------------------------*
+FORM GET_XLS_OPEN_FILENAME USING PV_FILENAME.
+
+  DATA : LT_FILETABLE TYPE FILETABLE,
+         LW_FILETABLE TYPE FILE_TABLE,
+         LV_RC TYPE I.
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=>FILE_OPEN_DIALOG
+    EXPORTING
+      WINDOW_TITLE         = 'Selection Excel File'
+      FILE_FILTER          = 'Excel(.xls,.xlsx)|*.xls;*.xlsx'
+    CHANGING
+      FILE_TABLE           = LT_FILETABLE
+      RC                   = LV_RC
+    EXCEPTIONS
+      CNTL_ERROR           = 1
+      ERROR_NO_GUI         = 2
+      NOT_SUPPORTED_BY_GUI = 3
+      OTHERS               = 4.
+
+  IF SY-SUBRC EQ 0.
+    READ TABLE LT_FILETABLE INDEX 1 INTO LW_FILETABLE.
+    PV_FILENAME = LW_FILETABLE-FILENAME.
+  ENDIF.
+
+ENDFORM. "sample_download
+
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_xls_save_filename
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_FILENAME  text
+*----------------------------------------------------------------------*
+FORM GET_XLS_SAVE_FILENAME USING PV_FILENAME.
+  DATA : LV_FILENAME TYPE STRING,
+         LV_PATH TYPE STRING,
+         LV_FULLPATH TYPE STRING.
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=>FILE_SAVE_DIALOG
+    EXPORTING
+      WINDOW_TITLE         = 'Selection Excel File'
+      FILE_FILTER          = 'Excel(.xls,.xlsx)|*.xls;*.xlsx'
+    CHANGING
+      FILENAME             = LV_FILENAME
+      PATH                 = LV_PATH
+      FULLPATH             = LV_FULLPATH
+    EXCEPTIONS
+      CNTL_ERROR           = 1
+      ERROR_NO_GUI         = 2
+      NOT_SUPPORTED_BY_GUI = 3
+      OTHERS               = 4.
+
+  IF SY-SUBRC EQ 0.
+    PV_FILENAME = LV_FULLPATH.
+  ENDIF.
+ENDFORM. "sample_download
+
+
+*&---------------------------------------------------------------------*
+*&      Form  excel_ole_standard_download
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_DATA      text
+*      -->PT_HEADER    text
+*      -->LV_FILENAME  text
+*----------------------------------------------------------------------*
+
+
+FORM EXCEL_OLE_STANDARD_DOWNLOAD TABLES PT_DATA
+                                         PT_HEADER
+                                  USING LV_FILENAME.
+
+  CALL FUNCTION 'MS_EXCEL_OLE_STANDARD_DAT'
+    EXPORTING
+      FILE_NAME                 = LV_FILENAME
+    TABLES
+      DATA_TAB                  = PT_DATA
+      FIELDNAMES                = PT_HEADER
+    EXCEPTIONS
+      FILE_NOT_EXIST            = 1
+      FILENAME_EXPECTED         = 2
+      COMMUNICATION_ERROR       = 3
+      OLE_OBJECT_METHOD_ERROR   = 4
+      OLE_OBJECT_PROPERTY_ERROR = 5
+      INVALID_PIVOT_FIELDS      = 6
+      DOWNLOAD_PROBLEM          = 7
+      OTHERS                    = 8.
+
+  IF SY-SUBRC NE 0.
+    MESSAGE E001(ZCAGM) WITH 'Faied Excel Download'.
+  ENDIF.
+
+ENDFORM. "excel_ole_standard_download
+*&---------------------------------------------------------------------*
+*&      Form  POPUP_TO_CONFIRM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM POPUP_TO_CONFIRM USING    PV_QUESTION
+                      CHANGING PV_ANSWER.
+  DATA : LV_TITLEBAR          TYPE CHAR30,
+         LV_TEXT_QUESTION     TYPE CHAR30,
+         LV_TEXT_BUTTON_1     TYPE CHAR30,
+         LV_TEXT_BUTTON_2     TYPE CHAR30.
+
+  MESSAGE S012(ZCAGM) INTO LV_TEXT_BUTTON_1.
+  MESSAGE S013(ZCAGM) INTO LV_TEXT_BUTTON_2.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      TITLEBAR              = LV_TITLEBAR
+      TEXT_QUESTION         = PV_QUESTION
+      TEXT_BUTTON_1         = LV_TEXT_BUTTON_1
+      TEXT_BUTTON_2         = LV_TEXT_BUTTON_2
+      DEFAULT_BUTTON        = '1'
+      DISPLAY_CANCEL_BUTTON = 'X'
+    IMPORTING
+      ANSWER                = PV_ANSWER.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.                    " POPUP_TO_CONFIRM
+
+
+*&---------------------------------------------------------------------*
+*&      Form  make_message_table
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_RETURN  text
+*      -->PV_MESSAGE text
+*----------------------------------------------------------------------*
+FORM MAKE_MESSAGE_TABLE TABLES    PT_RETURN STRUCTURE BAPIRET2
+                          CHANGING    PV_MESSAGE.
+  DATA : LV_MESSAGE(128).
+  CLEAR : LV_MESSAGE.
+  LOOP AT PT_RETURN.
+    MESSAGE ID     PT_RETURN-ID
+            TYPE   PT_RETURN-TYPE
+            NUMBER PT_RETURN-NUMBER
+            WITH   PT_RETURN-MESSAGE_V1
+                   PT_RETURN-MESSAGE_V2
+                   PT_RETURN-MESSAGE_V3
+                   PT_RETURN-MESSAGE_V4
+            INTO   LV_MESSAGE.
+    IF PV_MESSAGE IS INITIAL.
+      PV_MESSAGE = LV_MESSAGE.
+    ELSE.
+      CONCATENATE PV_MESSAGE LV_MESSAGE INTO PV_MESSAGE SEPARATED BY '/'.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.                    "make_message_table
+
+*&---------------------------------------------------------------------*
+*&      Form  bapiret2_display
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_MESSAGE text
+*----------------------------------------------------------------------*
+FORM BAPIRET2_DISPLAY TABLES PT_MESSAGE STRUCTURE BAPIRET2.
+  CALL FUNCTION 'FINB_BAPIRET2_DISPLAY'
+    EXPORTING
+      IT_MESSAGE = PT_MESSAGE[].
+ENDFORM.                    "bapiret2_display
+*&---------------------------------------------------------------------*
+*&      Form  sapgui_progress_indicator
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_PERCENT text
+*      -->PV_TEXT    text
+*----------------------------------------------------------------------*
+FORM SAPGUI_PROGRESS_INDICATOR USING PV_PERCENT PV_TEXT.
+  IF PV_PERCENT IS INITIAL.
+    CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+      EXPORTING
+        TEXT = PV_TEXT.
+
+  ELSE.
+    CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+      EXPORTING
+        PERCENTAGE = PV_PERCENT
+        TEXT       = PV_TEXT.
+  ENDIF.
+ENDFORM.                    "sapgui_progress_indicator
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_last_day_of_month
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_DATE      text
+*      -->PV_LAST_DAY  text
+*----------------------------------------------------------------------*
+FORM GET_LAST_DAY_OF_MONTH USING PV_DATE TYPE SYDATUM CHANGING PV_LAST_DAY.
+  DATA : LV_DATE LIKE SY-DATUM.
+
+  CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+    EXPORTING
+      DAY_IN            = PV_DATE
+    IMPORTING
+      LAST_DAY_OF_MONTH = LV_DATE.
+
+  PV_LAST_DAY = LV_DATE.
+ENDFORM.                    "get_last_day_of_month
+
+
+*&---------------------------------------------------------------------*
+*&      Form  calc_date_in_interval
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_TYPE      text
+*      -->PV_IN_DATE   text
+*      -->PV_INTERVAL  text
+*      -->PV_OUT_DATE  text
+*----------------------------------------------------------------------*
+FORM CALC_DATE_IN_INTERVAL USING PV_TYPE PV_IN_DATE PV_INTERVAL PV_SIGNUM
+                           CHANGING PV_OUT_DATE.
+  DATA : LV_DATE  LIKE  P0001-BEGDA,
+         LV_DAYS  LIKE  T5A4A-DLYDY,
+         LV_MONTHS  LIKE  T5A4A-DLYMO,
+         LV_YEARS LIKE  T5A4A-DLYYR,
+         LV_CALC_DATE LIKE P0001-BEGDA,
+         LV_SIGNUM LIKE T5A4A-SPLIT.
+
+  CLEAR : PV_OUT_DATE.
+  LV_DATE = PV_IN_DATE.
+  LV_SIGNUM = PV_SIGNUM.
+  CASE PV_TYPE.
+    WHEN 'D'. LV_DAYS = PV_INTERVAL. LV_MONTHS = '00'. LV_YEARS = '00'.
+    WHEN 'M'. LV_DAYS = '00'. LV_MONTHS = PV_INTERVAL. LV_YEARS = '00'.
+    WHEN 'Y'. LV_DAYS = '00'. LV_MONTHS = '00'. LV_YEARS = PV_INTERVAL.
+  ENDCASE.
+
+  CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+    EXPORTING
+      DATE      = LV_DATE
+      DAYS      = LV_DAYS
+      MONTHS    = LV_MONTHS
+      YEARS     = LV_YEARS
+      SIGNUM    = LV_SIGNUM
+    IMPORTING
+      CALC_DATE = LV_CALC_DATE.
+
+  PV_OUT_DATE = LV_CALC_DATE.
+
+ENDFORM.                    "calc_date_in_interval
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_DAY_OF_WEEK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_DATE         text
+*      -->PV_DAY_OF_WEEK  text
+*----------------------------------------------------------------------*
+FORM GET_DAY_OF_WEEK USING PV_DATE CHANGING PV_DAY_OF_WEEK.
+
+  DATA: LV_DAY TYPE SCAL-DATE.
+  DATA: LV_DAY_OF_WEEK TYPE SCAL-INDICATOR.
+
+  LV_DAY = PV_DATE.
+  CALL FUNCTION 'DATE_COMPUTE_DAY'
+    EXPORTING
+      DATE   = LV_DAY
+    IMPORTING
+      DAY    = LV_DAY_OF_WEEK
+    EXCEPTIONS
+      OTHERS = 8.
+
+  PV_DAY_OF_WEEK = LV_DAY_OF_WEEK.
+
+ENDFORM.                    "GET_DAY_OF_WEEK
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_number_range
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->VALUE(PV_NROBJ)  text
+*      -->VALUE(PV_RANGE)  text
+*      -->PV_NUMBER        text
+*----------------------------------------------------------------------*
+FORM GET_NUMBER_RANGE USING VALUE(PV_NROBJ)
+                              VALUE(PV_RANGE)
+                      CHANGING PV_NUMBER.
+  DATA :  LV_NROBJ TYPE INRI-OBJECT,
+          LV_RANGE TYPE INRI-NRRANGENR,
+          LV_NEXTNUM TYPE BAPICATS1-NETWORK.
+
+  LV_NROBJ = PV_NROBJ.
+  LV_RANGE = PV_RANGE.
+
+  "Number range Lock
+  CALL FUNCTION 'NUMBER_RANGE_ENQUEUE'
+    EXPORTING
+      OBJECT           = LV_NROBJ
+    EXCEPTIONS
+      FOREIGN_LOCK     = 1
+      OBJECT_NOT_FOUND = 2
+      SYSTEM_FAILURE   = 3
+      OTHERS           = 4.
+
+  "Get Number
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      NR_RANGE_NR             = LV_RANGE
+      OBJECT                  = LV_NROBJ
+    IMPORTING
+      NUMBER                  = LV_NEXTNUM
+    EXCEPTIONS
+      INTERVAL_NOT_FOUND      = 1
+      NUMBER_RANGE_NOT_INTERN = 2
+      OBJECT_NOT_FOUND        = 3
+      QUANTITY_IS_0           = 4
+      QUANTITY_IS_NOT_1       = 5
+      INTERVAL_OVERFLOW       = 6
+      BUFFER_OVERFLOW         = 7
+      OTHERS                  = 8.
+
+  "Number range unLock
+  CALL FUNCTION 'NUMBER_RANGE_DEQUEUE'
+    EXPORTING
+      OBJECT           = LV_NROBJ
+    EXCEPTIONS
+      OBJECT_NOT_FOUND = 1
+      OTHERS           = 2.
+
+  CHECK LV_NEXTNUM IS NOT INITIAL.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      INPUT  = LV_NEXTNUM
+    IMPORTING
+      OUTPUT = PV_NUMBER.
+ENDFORM.                    "get_number_range
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_domain_values
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_VALUE_TAB  text
+*      -->PV_DOMAIN     text
+*----------------------------------------------------------------------*
+FORM GET_DOMAIN_VALUES TABLES PT_VALUE_TAB STRUCTURE DD07V
+                         USING PV_DOMAIN.
+  DATA : LV_DOMAIN LIKE DD07L-DOMNAME.
+  LV_DOMAIN = PV_DOMAIN.
+
+  CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      DOMNAME         = LV_DOMAIN
+    TABLES
+      VALUES_TAB      = PT_VALUE_TAB
+    EXCEPTIONS
+      NO_VALUES_FOUND = 1
+      OTHERS          = 2.
+
+  SORT PT_VALUE_TAB BY DOMNAME.
+ENDFORM.                    "get_domain_values
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  get_domain_text
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_DOMNAME text
+*      -->PV_VALUE   text
+*      -->PV_TEXT    text
+*----------------------------------------------------------------------*
+FORM GET_DOMAIN_TEXT USING PV_DOMNAME PV_VALUE CHANGING PV_DDTEXT.
+  CLEAR : PV_DDTEXT.
+  SELECT SINGLE DDTEXT INTO PV_DDTEXT
+    FROM DD07T
+    WHERE DOMNAME EQ PV_DOMNAME
+      AND DOMVALUE_L EQ PV_VALUE
+      AND DDLANGUAGE EQ SY-LANGU.
+ENDFORM.                    "get_domain_text
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  CALC_VALUE_ROUND
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_RTYPE   text
+*      -->PV_RUNIT   text
+*      -->PV_INPUT   text
+*      -->PV_OUTPUT  text
+*----------------------------------------------------------------------*
+FORM CALC_VALUE_ROUND USING PV_RTYPE PV_RUNIT PV_INPUT
+                           CHANGING PV_OUTPUT.
+  DATA : LV_RTYPE LIKE VTBLEISTE-RTYPE,
+         LV_RUNIT LIKE VTBFIMA-RUNIT.
+
+  LV_RTYPE = PV_RTYPE. " SPACE : 반올림, + : 올림, - : 버림
+  LV_RUNIT = PV_RUNIT. " 기준자리수
+  CALL FUNCTION 'FIMA_NUMERICAL_VALUE_ROUND'
+    EXPORTING
+      I_RTYPE     = LV_RTYPE
+      I_RUNIT     = LV_RUNIT
+      I_VALUE     = PV_INPUT
+    IMPORTING
+      E_VALUE_RND = PV_OUTPUT.
+
+ENDFORM.                    "NUMERICAL_VALUE_ROUND
+*&---------------------------------------------------------------------*
+*&      Form  GET_DEST_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0466   text
+*      <--P_LV_DEST  text
+*----------------------------------------------------------------------*
+FORM GET_DEST_NAME  USING    PV_TYPE
+                    CHANGING PV_DEST.
+  CASE PV_TYPE.
+    WHEN 'MES'. PV_DEST = 'MES'.
+  ENDCASE.
+
+ENDFORM.                    " GET_DEST_NAME
+*&---------------------------------------------------------------------*
+*&      Form  DYNPRO_VALUE_READ
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_6488   text
+*      -->P_P_WERKS  text
+*----------------------------------------------------------------------*
+FORM DYNPRO_VALUE_READ  USING    PV_FIELD TYPE DYNFNAM
+                                 PV_VALUE.
+
+  DATA : LT_FIELD TYPE TABLE OF DYNPREAD WITH HEADER LINE.
+
+  CLEAR : LT_FIELD.
+  LT_FIELD-FIELDNAME = PV_FIELD.
+  APPEND LT_FIELD.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      DYNAME     = SY-REPID
+      DYNUMB     = SY-DYNNR
+    TABLES
+      DYNPFIELDS = LT_FIELD
+    EXCEPTIONS
+      OTHERS     = 01.
+
+  READ TABLE LT_FIELD INDEX 1.
+  CHECK SY-SUBRC EQ 0.
+  PV_VALUE = LT_FIELD-FIELDVALUE.
+
+
+*  DATA : LV_VALUE TYPE DYNFIELDVALUE.
+*
+*  CALL FUNCTION 'FM_FYC_DYNPRO_VALUE_READ'
+*    EXPORTING
+*      I_REPID      = SY-REPID
+*      I_DYNNR      = SY-DYNNR
+*      I_FIELDNAME  = PV_FIELD
+*    IMPORTING
+*      E_FIELDVALUE = LV_VALUE.
+*
+*  CHECK SY-SUBRC EQ 0.
+*  PV_VALUE = LV_VALUE.
+ENDFORM.                    " DYNPRO_VALUE_READ
+
+*&---------------------------------------------------------------------*
+*&      Form  f4_month
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->p_month   text
+*----------------------------------------------------------------------*
+FORM F4_MONTH USING PV_MONTH.
+  DATA: LT_DYNPFIELDS LIKE TABLE OF DYNPREAD WITH HEADER LINE.
+
+  DATA: LV_RETURN LIKE SY-SUBRC,
+        LV_MONAT  LIKE ISELLIST-MONTH.
+
+  FIELD-SYMBOLS: <FS>.
+
+*.Wert von Dynpro lesen
+  GET CURSOR FIELD LT_DYNPFIELDS-FIELDNAME.
+  APPEND LT_DYNPFIELDS.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      DYNAME               = SY-CPROG  "sy-repid
+      DYNUMB               = SY-DYNNR
+    TABLES
+      DYNPFIELDS           = LT_DYNPFIELDS
+    EXCEPTIONS
+      INVALID_ABAPWORKAREA = 01
+      INVALID_DYNPROFIELD  = 02
+      INVALID_DYNPRONAME   = 03
+      INVALID_DYNPRONUMMER = 04
+      INVALID_REQUEST      = 05
+      NO_FIELDDESCRIPTION  = 06
+      UNDEFIND_ERROR       = 07.
+
+  IF SY-SUBRC EQ 0.
+    READ TABLE LT_DYNPFIELDS INDEX 1.
+
+    CALL FUNCTION 'CONVERSION_EXIT_PERI_INPUT'
+      EXPORTING
+        INPUT      = LT_DYNPFIELDS-FIELDVALUE
+        NO_MESSAGE = 'X'
+      IMPORTING
+        OUTPUT     = LV_MONAT.
+
+    IF LV_MONAT IS INITIAL.
+      LV_MONAT = SY-DATLO(6).
+    ENDIF.
+  ELSE.
+    LV_MONAT = SY-DATLO(6).
+  ENDIF.
+
+  CALL FUNCTION 'POPUP_TO_SELECT_MONTH'
+    EXPORTING
+      ACTUAL_MONTH               = LV_MONAT
+    IMPORTING
+      SELECTED_MONTH             = LV_MONAT
+      RETURN_CODE                = LV_RETURN
+    EXCEPTIONS
+      FACTORY_CALENDAR_NOT_FOUND = 01
+      HOLIDAY_CALENDAR_NOT_FOUND = 02
+      MONTH_NOT_FOUND            = 03.
+
+  IF SY-SUBRC EQ 0 AND LV_RETURN EQ 0.
+*    ASSIGN (lt_dynpfields-fieldname) TO <fs>.
+*    <fs> = lV_monat.
+    PV_MONTH = LV_MONAT.
+  ENDIF.
+
+ENDFORM.                                                    " f4_month
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_AUTH
+*&---------------------------------------------------------------------*
+
+FORM CHECK_AUTH_BUKRS USING PV_BUKRS.
+  call function 'ZCAG_CHECK_AUTH_ZM1'
+    EXPORTING
+      IV_BUKRS = PV_BUKRS.
+            .
+ENDFORM.                    "CHECK_AUTH_BUKRS
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_AUTH_BUKRS_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_BUKRS   text
+*----------------------------------------------------------------------*
+FORM CHECK_AUTH_BUKRS_RANGE TABLES PT_BUKRS STRUCTURE ZCAG9101S.
+  call function 'ZCAG_CHECK_AUTH_ZM1'
+    TABLES
+      IT_BUKRS = PT_BUKRS.
+ENDFORM.                    "CHECK_AUTH_BUKRS_RANGE
+
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_AUTH_WERKS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_WERKS   text
+*----------------------------------------------------------------------*
+FORM CHECK_AUTH_WERKS USING PV_WERKS.
+  call function 'ZCAG_CHECK_AUTH_ZM1'
+    EXPORTING
+      IV_WERKS = PV_WERKS.
+
+ENDFORM.                    "CHECK_AUTH_BUKRS
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_AUTH_BUKRS_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_BUKRS   text
+*----------------------------------------------------------------------*
+FORM CHECK_AUTH_WERKS_RANGE TABLES PT_WERKS STRUCTURE ZCAG9102S.
+  call function 'ZCAG_CHECK_AUTH_ZM1'
+    TABLES
+      IT_WERKS = PT_WERKS.
+ENDFORM.                    "CHECK_AUTH_BUKRS_RANGE
+
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_AUTH_VKORG
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_VKORG   text
+*----------------------------------------------------------------------*
+FORM CHECK_AUTH_VKORG USING PV_VKORG.
+  call function 'ZCAG_CHECK_AUTH_ZM1'
+    EXPORTING
+      IV_VKORG = PV_VKORG.
+ENDFORM.                    "CHECK_AUTH_BUKRS
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_AUTH_BUKRS_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PT_BUKRS   text
+*----------------------------------------------------------------------*
+FORM CHECK_AUTH_VKORG_RANGE TABLES PT_VKORG STRUCTURE ZCAG9103S.
+  call function 'ZCAG_CHECK_AUTH_ZM1'
+    TABLES
+      IT_VKORG = PT_VKORG.
+ENDFORM.                    "CHECK_AUTH_VKORG_RANGE
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  currency_conv_to_internal
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_CURRENCY  text
+*      -->PV_IN_AMT    text
+*      -->PV_OUT_AMT   text
+*----------------------------------------------------------------------*
+FORM CURRENCY_CONV_TO_INTERNAL USING PV_CURRENCY PV_IN_AMT PV_OUT_AMT.
+  DATA : LV_IN_AMT LIKE BAPICURR-BAPICURR.
+  LV_IN_AMT = PV_IN_AMT.
+  CALL FUNCTION 'BAPI_CURRENCY_CONV_TO_INTERNAL'
+    EXPORTING
+      CURRENCY             = PV_CURRENCY
+      AMOUNT_EXTERNAL      = LV_IN_AMT
+      MAX_NUMBER_OF_DIGITS = 20
+    IMPORTING
+      AMOUNT_INTERNAL      = PV_OUT_AMT.
+ENDFORM.                    "currency_conv_to_internal
+
+
+*&---------------------------------------------------------------------*
+*&      Form  bdc_amount_format
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_CURRENCY  text
+*      -->PV_IN_AMT    text
+*      -->PV_OUT_AMT   text
+*----------------------------------------------------------------------*
+FORM BDC_AMOUNT_FORMAT USING PV_CURRENCY PV_IN_AMT PV_OUT_AMT.
+  WRITE PV_IN_AMT TO PV_OUT_AMT CURRENCY PV_CURRENCY.
+  REPLACE ALL OCCURRENCES OF ',' IN PV_OUT_AMT WITH ''.
+ENDFORM.                    "bdc_amount_format
+
+
+*&---------------------------------------------------------------------*
+*&      Form  BDC_QUANTITY_FORMAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_UNIT    text
+*      -->PV_IN_QTY  text
+*      -->PV_OUT_QTY text
+*----------------------------------------------------------------------*
+FORM BDC_QUANTITY_FORMAT USING PV_UNIT PV_IN_QTY PV_OUT_QTY.
+  WRITE PV_IN_QTY TO PV_OUT_QTY UNIT PV_UNIT.
+  REPLACE ALL OCCURRENCES OF ',' IN PV_OUT_QTY WITH ''.
+ENDFORM.                    "bdc_amount_format
+*&---------------------------------------------------------------------*
+*&      Form  GET_MATERIAL_PRICE_ACT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_IT_PRDATA_ACTPR  text
+*      <--P_IT_PRDATA_LIFNR  text
+*      <--P_IT_PRDATA_NAME1  text
+*----------------------------------------------------------------------*
+FORM GET_MATERIAL_PRICE_ACT  USING P_PWERK P_MATNR P_STDAT
+          CHANGING P_ACTPR.
+
+  DATA: LV_BDATJ LIKE CKMLPP-BDATJ,
+            LV_POPER LIKE CKMLPP-POPER,
+            LV_STDAT LIKE SY-DATUM,
+            LV_KALNR LIKE CKMLHD-KALNR,
+            LV_ZUKUMO LIKE CKMLPP-ZUKUMO.
+
+  DATA: BEGIN OF LT_CKMDATA OCCURS 0,
+            KALNR LIKE CKMLHD-KALNR,
+            BDATJ LIKE CKMLCR-BDATJ,
+            POPER LIKE CKMLCR-POPER,
+            STPRS LIKE CKMLCR-STPRS,
+            PVPRS LIKE CKMLCR-PVPRS,
+            PEINH LIKE CKMLCR-PEINH,
+            ZUKUMO LIKE CKMLPP-ZUKUMO,
+            ZUPRD_O LIKE CKMLCR-ZUPRD_O,
+            ZUKDM_O LIKE CKMLCR-ZUKDM_O,
+            ZUPRD_MO LIKE CKMLCR-ZUPRD_MO,
+            ZUKDM_MO LIKE CKMLCR-ZUKDM_MO.
+  DATA: END OF LT_CKMDATA.
+
+  "기간
+  LV_BDATJ = P_STDAT+0(4).
+  CONCATENATE '0' P_STDAT+4(2) INTO LV_POPER.
+
+  "원가추정번호
+  SELECT SINGLE KALNR INTO LV_KALNR
+    FROM CKMLHD
+    WHERE BWKEY EQ P_PWERK
+       AND MATNR EQ P_MATNR.
+
+  "당월 수량/금액
+  SELECT SINGLE *
+    FROM CKMLPP AS A
+    JOIN CKMLCR AS B ON A~KALNR EQ B~KALNR
+                         AND A~BDATJ EQ B~BDATJ
+                         AND A~POPER EQ B~POPER
+    INTO CORRESPONDING FIELDS OF LT_CKMDATA
+    WHERE A~KALNR EQ LV_KALNR
+        AND A~BDATJ EQ LV_BDATJ
+        AND A~POPER EQ LV_POPER.
+
+  "당월입고가 있는 경우
+  IF LT_CKMDATA-ZUKUMO NE '0'.
+    "입고단가 = (표준단가 * 입고수량) + 차이
+    P_ACTPR = ( ( LT_CKMDATA-STPRS *  LT_CKMDATA-ZUKUMO / LT_CKMDATA-PEINH )
+                  +  LT_CKMDATA-ZUPRD_O +  LT_CKMDATA-ZUKDM_O
+                  + LT_CKMDATA-ZUPRD_MO +  LT_CKMDATA-ZUKDM_MO )
+                   / LT_CKMDATA-ZUKUMO.
+    "당월입고가 없는 경우
+  ELSE.
+
+    CLEAR: LV_BDATJ, LV_POPER, LT_CKMDATA,  LT_CKMDATA[].
+
+    "이전 기간
+    CALL FUNCTION 'RE_ADD_MONTH_TO_DATE'
+      EXPORTING
+        MONTHS  = -1
+        OLDDATE = P_STDAT
+      IMPORTING
+        NEWDATE = LV_STDAT.
+
+    LV_BDATJ = P_STDAT+0(4).
+    CONCATENATE '0' LV_STDAT+4(2) INTO LV_POPER.
+
+    "이전기간의 기간별단가
+    SELECT SINGLE *
+      FROM CKMLPP AS A
+      JOIN CKMLCR AS B ON A~KALNR EQ B~KALNR
+                           AND A~BDATJ EQ B~BDATJ
+                           AND A~POPER EQ B~POPER
+      INTO CORRESPONDING FIELDS OF LT_CKMDATA
+      WHERE A~KALNR EQ LV_KALNR
+          AND A~BDATJ EQ LV_BDATJ
+          AND A~POPER EQ LV_POPER.
+
+    P_ACTPR = LT_CKMDATA-PVPRS / LT_CKMDATA-PEINH.
+
+  ENDIF.
+
+ENDFORM.                    " GET_MATERIAL_PRICE_ACT
+
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_LIFNR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_IT_PRDATA_LIFNR  text
+*      <--P_IT_PRDATA_NAME1  text
+*----------------------------------------------------------------------*
+FORM GET_VENDOR  USING P_PWERK P_MATNR P_STDAT
+                                 CHANGING P_LIFNR P_NAME1.
+
+  DATA: LV_EBELN TYPE EBELN.
+  DATA: LV_STDAT TYPE SY-DATUM.
+
+  LV_STDAT = P_STDAT - ( 365 * 1 ).  "1년치 데이터로 한정
+
+  SELECT MAX( A~EBELN ) INTO LV_EBELN
+    FROM EKBE AS A
+    WHERE VGABE EQ '1'
+         AND WERKS EQ P_PWERK
+         AND MATNR EQ P_MATNR
+         AND BUDAT GT LV_STDAT
+         AND BUDAT LE P_STDAT.
+
+
+  SELECT SINGLE A~LIFNR B~NAME1 INTO (P_LIFNR, P_NAME1)
+    FROM EKKO AS A
+    JOIN LFA1 AS B ON A~LIFNR EQ B~LIFNR
+    WHERE A~EBELN EQ LV_EBELN.
+
+ENDFORM.                    " GET_LIFNR
+*&---------------------------------------------------------------------*
+*&      Form  CEHCK_CLIENT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_SY_SUBRC  text
+*----------------------------------------------------------------------*
+FORM CEHCK_CLIENT  USING    PV_SUBRC.
+
+  call function 'ZCAG_CHECK_CLIENT'
+    EXPORTING
+      IV_MANDT     = SY-MANDT
+    EXCEPTIONS
+      ERROR_CLIENT = 1
+      OTHERS       = 2.
+
+  PV_SUBRC = SY-SUBRC.
+
+ENDFORM.                    " CEHCK_CLIENT
+**&---------------------------------------------------------------------*
+**&      Form  GET_MATNR_DESCRIPTION
+**&---------------------------------------------------------------------*
+**       text
+**----------------------------------------------------------------------*
+**      -->P_LT_MATNR  text
+**      -->P_LT_MAKT  text
+**----------------------------------------------------------------------*
+*FORM GET_MATNR_DESCRIPTION  TABLES   PT_IN
+*                                     PT_OUT.
+*  DATA  : LT_IN  TYPE TABLE OF MAKT WITH HEADER LINE,
+*          LT_OUT TYPE TABLE OF MAKT WITH HEADER LINE.
+*
+*  CHECK PT_IN[] IS NOT INITIAL.
+*
+*  LOOP AT PT_IN.
+*    MOVE-CORRESPONDING PT_IN TO LT_IN.
+*    APPEND LT_IN.
+*  ENDLOOP.
+*
+*  SELECT MATNR MAKTX
+*    INTO CORRESPONDING FIELDS OF TABLE LT_OUT
+*    FROM MAKT
+*    FOR ALL ENTRIES IN LT_IN
+*    WHERE MATNR = LT_IN-MATNR
+*      AND SPRAS = SY-LANGU.
+*
+*  SORT LT_OUT BY MATNR.
+*  REFRESH PT_OUT.
+*
+*  LOOP AT LT_OUT.
+*    MOVE-CORRESPONDING LT_OUT TO PT_OUT.
+*    APPEND PT_OUT.
+*  ENDLOOP.
+*ENDFORM.                    " GET_MATNR_DESCRIPTION
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

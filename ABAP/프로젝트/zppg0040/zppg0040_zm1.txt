@@ -1,0 +1,2513 @@
+*&---------------------------------------------------------------------*
+*& Report ZPPG0040_ZM1
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZPPG0040_ZM1 MESSAGE-ID zppgm.
+
+INCLUDE ZCAG0002_ALV.
+*INCLUDE zcag0021_alv.
+INCLUDE ZCAG0002_F01.
+*INCLUDE zcag0021_f01.
+INCLUDE ZPPG0002_F01.
+*INCLUDE zppg0021_f01.
+
+
+*----------------------------------------------------------------------*
+* Table
+*----------------------------------------------------------------------*
+TABLES:
+  mkal, "Production Versions of Material
+  marc, "Plant Data for Material
+  mapl, "Assignment of Task Lists to Materials
+  mast, "Material to BOM Link
+  stko, "BOM Header
+  crhd, "Work Center Header
+  plpo, "Task list - operation/activity
+  plko, "Task list - header
+  mara. "General Material Data
+
+
+*----------------------------------------------------------------------*
+* Type
+*----------------------------------------------------------------------*
+TYPES : BEGIN OF gy_search,
+          bstnk LIKE vbak-bstnk,
+          bukrs LIKE ekko-bukrs,
+          ekorg LIKE ekko-ekorg,
+          lifnr LIKE ekko-lifnr,
+          matnr LIKE ekpo-matnr,
+          vkorg LIKE vbak-vkorg,
+          kunnr LIKE vbak-kunnr,
+        END OF gy_search.
+*----------------------------------------------------------------------*
+* Constants
+*----------------------------------------------------------------------*
+*CONSTANTS: C_VERID LIKE MKAL-VERID VALUE '01'.
+CONSTANTS: c_bdatu LIKE mkal-bdatu VALUE '99991231'.
+CONSTANTS: c_serkz LIKE mkal-serkz VALUE 'X'.
+
+*----------------------------------------------------------------------*
+* 광역변수
+*----------------------------------------------------------------------*
+DATA: gv_okcd LIKE sy-ucomm,
+      gv_ucom LIKE sy-ucomm.
+DATA: gv_matnr      TYPE matnr,
+      gv_index_now  TYPE i,
+      gv_index_last TYPE i,
+      gv_body_flag  TYPE n,  "수정시 비디시에서 사용
+      gv_error(8)   TYPE n, " 실패건수
+      gv_ok(8)      TYPE n, " 성공건수
+      gv_count(8)   TYPE n.   "인터너테이블 데이터건수
+DATA: gv_bapi_done.      "바피 성공
+DATA: gv_allo_counter(4) TYPE n. "자재지정개수
+DATA: gv_message TYPE char258.
+DATA: gv_losvn(13),"BDC돌릴시 최소로트크기
+      gv_losbs(13)."BDC돌릴시 최대로트크기
+DATA: gv_excel_success      LIKE sy-tabix,
+      gv_excel_fail         TYPE sy-tabix,
+      gv_excel_total        TYPE sy-tabix,
+      gv_processing_success TYPE sy-tabix,
+      gv_processing_fail    TYPE sy-tabix,
+      gv_processing_total   TYPE sy-tabix.
+
+*----------------------------------------------------------------------*
+* IT & STRUCTURE
+*----------------------------------------------------------------------*
+DATA: BEGIN OF gt_data OCCURS 0,
+        matnr            LIKE mara-matnr,
+        maktx            LIKE makt-maktx,
+        matkl            LIKE mara-matkl,
+        werks            LIKE marc-werks,
+        zkriz            LIKE mapl-zkriz,
+        zaehl            LIKE mapl-zkriz,
+        plnty            LIKE mapl-plnty,
+        plnnr            LIKE mapl-plnnr,
+        plnal            LIKE mapl-plnal,
+        stlal(2), " 대체 BOM
+        stlan(2), " BOM 용도
+        verid(4), "Version
+        text1(40),"Version txt
+        mksp(1),  " 잠금여부
+        adatu(08), "효력 시작일자
+        bdatu(08), " 효력 종료일자
+        bstmi(16)," 최소로트크기
+        bstma(16), " 최대 로트크기
+        serkz(1), " REM 허용
+        mdv01(08), " 생산라인
+        elpro(04) , " 출고 위치
+        alort(04) , " 입고 위치
+        arbpl(08)," WORK CENTER
+        ktext(40), " TEXT
+        datuv            LIKE plko-datuv,
+        losvn            LIKE plko-losvn,
+        losbs            LIKE plko-losbs,
+        check(4)         TYPE c,
+        bom_light(6),
+        routing_light(6),
+        icon(4),"Yellow : Excel Success  Green : Processing Success
+        celltab          TYPE lvc_t_styl,
+        alnal            LIKE mkal-alnal, "Group Counter
+        sttag            LIKE plko-datuv,
+        meins            LIKE mara-meins,
+        msg(225),
+        exist.
+DATA: END OF gt_data.
+
+
+
+"BDC
+DATA :
+  gt_bdcdata LIKE bdcdata    OCCURS 0 WITH HEADER LINE,
+  gt_messtab LIKE bdcmsgcoll OCCURS 0 WITH HEADER LINE,
+  gv_mseg    LIKE sy-msgv1,
+  gv_line    TYPE i,
+  gv_opt     LIKE ctu_params.
+
+RANGES: r_beskz  FOR marc-beskz.
+
+*----------------------------------------------------------------------*
+* SELECTION-SCREEN
+*----------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-s01.
+PARAMETERS : p_werks TYPE marc-werks OBLIGATORY.
+"PARAMETERS : p_werks TYPE marc-werks.
+SELECT-OPTIONS : s_matnr FOR mara-matnr.
+
+SELECTION-SCREEN END OF BLOCK b1.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-s02.
+
+PARAMETERS: p_bmode TYPE bdcmode DEFAULT 'N'
+AS LISTBOX VISIBLE LENGTH 40.
+
+
+
+SELECTION-SCREEN END OF BLOCK b2.
+SELECTION-SCREEN FUNCTION KEY 1.
+
+*----------------------------------------------------------------------*
+* INITIALIZATION
+*----------------------------------------------------------------------*
+INITIALIZATION.
+  PERFORM initialization.
+
+
+*----------------------------------------------------------------------*
+* AT SELECTION-SCREEN
+*----------------------------------------------------------------------*
+
+AT SELECTION-SCREEN.
+  PERFORM at_sel_scr.
+
+*----------------------------------------------------------------------*
+* START-OF-SELECTION
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+  PERFORM check_auth_werks USING p_werks.
+  PERFORM process_data USING space.
+
+*----------------------------------------------------------------------*
+* END-OF-SELECTION
+*----------------------------------------------------------------------*
+END-OF-SELECTION.
+  CALL SCREEN 0100.
+
+
+************************************************************************
+*&      Module  PBO  OUTPUT
+************************************************************************
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  DATA : lt_ex_ucomm      TYPE TABLE OF sy-ucomm WITH HEADER LINE.
+  CLEAR: lt_ex_ucomm, lt_ex_ucomm[].
+
+  APPEND 'DELETE' TO lt_ex_ucomm.
+  SET PF-STATUS '0100' EXCLUDING lt_ex_ucomm[].
+
+  DATA: l_title TYPE sy-title.
+  l_title = sy-title.
+  SET TITLEBAR  '0100' WITH l_title.  "&
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  PBO_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE pbo_0100 OUTPUT.
+
+*  IF GS_DCON1 IS INITIAL.
+*    CREATE OBJECT GS_DCON1
+*      EXPORTING
+*        STYLE     = CL_GUI_CONTROL=>WS_CHILD
+*        REPID     = SY-CPROG
+*        DYNNR     = SY-DYNNR
+*        SIDE      = GS_DCON1->DOCK_AT_LEFT
+*        LIFETIME  = CL_GUI_CONTROL=>LIFETIME_IMODE
+*        EXTENSION = 3000
+*      EXCEPTIONS
+*        OTHERS    = 1.
+**    PERFORM ALV_GLOBAL_SPLITTER_OBJECT USING GS_DCON1 GS_GCON1
+*GS_GCON2
+**    15.
+*  ENDIF.
+
+
+* ALV Title 설정
+*  PERFORM SET_ALV_TITLE TABLES GT_DOCUMENT.
+*  PERFORM ALV_GLOBAL_CREATE_DOCUMENT TABLES GT_DOCUMENT
+*                                  USING GO_CL_DD_DOCUMENT GS_GCON1.
+*  PERFORM ALV_CREATE_OBJECT_GCON
+*     TABLES GT_DATA
+*     USING  GRID1
+*            GS_GCON2
+*            'CON1'
+*            'GT_DATA'
+*            ''.
+
+  PERFORM alv_create_object_acon
+      TABLES gt_data
+      USING  grid1
+             gs_ccon1
+             'GO_CONT'
+             'GT_DATA'
+             ''.
+
+
+ENDMODULE.                 " PBO_0100  OUTPUT
+
+
+
+************************************************************************
+*&      Module  PAI  INPUT
+************************************************************************
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CLEAR gv_okcd.
+  gv_okcd = gv_ucom.
+  CLEAR gv_ucom.
+
+  CASE gv_okcd.
+
+    WHEN  'EXIT' OR 'CANC' OR 'BACK'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.                 " EXIT_0100  INPUT
+
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CLEAR gv_okcd.
+  gv_okcd = gv_ucom.
+  CLEAR gv_ucom.
+
+  CASE gv_okcd.
+    WHEN 'DELETE'.
+      READ TABLE gt_data WITH KEY check = 'X'.
+      IF sy-subrc <> 0.
+        MESSAGE s307 DISPLAY LIKE 'E'.
+      ELSE.
+        PERFORM delete_version.
+        PERFORM alv_cell_style TABLES gt_data.
+      ENDIF.
+    WHEN 'BACK'.
+      PERFORM free_alv.
+
+      LEAVE TO SCREEN 0.
+    WHEN 'SELECT'.
+      gt_data-check = 'X'.
+      MODIFY gt_data TRANSPORTING check WHERE check = ''
+      AND msg IS INITIAL.
+
+    WHEN 'DESELECT'.
+      CLEAR gt_data-check .
+      MODIFY gt_data TRANSPORTING check WHERE check = 'X'.
+    WHEN 'CREATE'.
+      READ TABLE gt_data WITH KEY check = 'X'.
+      IF sy-subrc <> 0.
+        MESSAGE s307 DISPLAY LIKE 'E'.
+      ELSE.
+        READ TABLE gt_data WITH KEY check = 'X'
+          bom_light =  icon_led_red.
+        IF sy-subrc = 0. "BOM에러가 있으면
+          MESSAGE s401  WITH gt_data-matnr
+            DISPLAY LIKE 'E'."bom에러
+        ELSE.
+          READ TABLE gt_data WITH KEY check = 'X'
+          routing_light =  icon_led_red.
+          IF sy-subrc = 0."라우팅에러가 있으면
+            MESSAGE s402 WITH gt_data-matnr
+              DISPLAY LIKE 'E'." 라우팅 에러
+          ELSE.
+            PERFORM craete_version.
+            PERFORM alv_cell_style TABLES gt_data.
+            PERFORM data_count.
+          ENDIF.
+        ENDIF.
+
+
+      ENDIF.
+  ENDCASE.
+ENDMODULE.                 " USER_COMMAND_0100  INPUT
+
+
+
+
+*---------------------------------------------------------------------*
+* FORM  APPEND_HEADER
+*---------------------------------------------------------------------*
+* TEXT : ALV Field Category using Internal Table
+*---------------------------------------------------------------------*
+FORM alv_append_header USING pv_itab_name
+                               pv_structure_name.
+
+  CLEAR : gt_fieldcat_h[], gt_fieldcat_h.
+  CLEAR : fieldcat, gv_col_pos.
+  REFRESH fieldcat.
+  CLEAR gv_col_pos.
+
+  "Internal Table에 대한 Field Catalog를 참조한다.
+  PERFORM alv_fieldcatalog_call USING pv_itab_name
+                                      pv_structure_name.
+
+  CASE pv_itab_name .
+    WHEN 'GT_DATA'. PERFORM set_fieldcat_data .
+  ENDCASE.
+
+
+ENDFORM. "APPEND_HEADER
+
+
+
+
+*---------------------------------------------------------------------*
+* FORM  ALV_INIT
+*---------------------------------------------------------------------*
+* TEXT : ALV Grid의 초기값을 설정한다.
+*---------------------------------------------------------------------*
+FORM alv_grid_init USING po_grid TYPE REF TO cl_gui_alv_grid
+                          pv_cons_name TYPE char10.
+
+  "Layout Setting
+*   gs_layout-cwidth_opt = 'X'.    "Column Width 최적화 사용여부
+  gs_layout-no_rowmark = ' '.
+  gs_layout-sel_mode   = 'D'.    "Row 선택유형
+*   GS_LAYOUT-ZEBRA      = 'X'.
+
+
+  gs_layout-no_totline = space.
+  gs_layout-numc_total = 'X'.
+  gs_layout-stylefname = 'CELLTAB'.
+
+
+
+  "Layout Variant 속성 설정
+  CONCATENATE sy-repid sy-dynnr INTO gv_variant-report.
+  gv_save = 'U'.
+
+
+  "Tollbar에서 제거할 버튼지정
+  PERFORM alv_exclude_tb_functions USING po_grid.
+
+  PERFORM alv_register_f4_fields USING po_grid.
+
+  CALL METHOD po_grid->register_edit_event
+    EXPORTING
+      i_event_id = cl_gui_alv_grid=>mc_evt_modified.
+
+
+* Event Define
+*   CREATE OBJECT GS_EVENT_RECEIVER.
+*   SET HANDLER GS_EVENT_RECEIVER->HANDLE_DOUBLE_CLICK  FOR PO_GRID.
+*   SET HANDLER GS_EVENT_RECEIVER->HANDLE_DATA_CHANGED  FOR PO_GRID.
+*   SET HANDLER GS_EVENT_RECEIVER->HANDLE_HOTSPOT_CLICK FOR PO_GRID.
+*   SET HANDLER GS_EVENT_RECEIVER->HANDLE_ONF4          FOR PO_GRID.
+
+
+ENDFORM. "alv_init
+
+
+
+
+*---------------------------------------------------------------------*
+* FORM  EXCLUDE_TB_FUNCTIONS
+*---------------------------------------------------------------------*
+* TEXT : ALV Toolbar에서 제외할 Button 설정
+*---------------------------------------------------------------------*
+FORM alv_exclude_tb_functions USING po_grid TYPE REF TO cl_gui_alv_grid.
+
+  CLEAR : gt_exclude, gt_exclude[].
+
+  "CL_GUI_ALV_GRID Class의 Static Attribute를 이용하여 Button을 제거한다.
+  "Button을 모두 제거하려면 CL_GUI_ALV_GRID=>MC_FC_EXCL_ALL를 지정한다.
+
+  PERFORM append_exclude_functions
+         TABLES gt_exclude[]
+          USING : cl_gui_alv_grid=>mc_fc_loc_undo, " 실행취소 &LOCAL&UNDO
+                  cl_gui_alv_grid=>mc_fc_loc_copy,          " 행 카피.
+                  cl_gui_alv_grid=>mc_fc_refresh,
+                  cl_gui_alv_grid=>mc_fc_loc_copy_row,      " 행 카피.
+                  cl_gui_alv_grid=>mc_fc_loc_cut,           " 가위.
+                  cl_gui_alv_grid=>mc_fc_loc_delete_row,    " 행삭제.
+                  cl_gui_alv_grid=>mc_fc_loc_insert_row,    " 행삽입.
+                  cl_gui_alv_grid=>mc_fc_loc_append_row,    " 라인생성.
+                  cl_gui_alv_grid=>mc_fc_loc_move_row,
+                  cl_gui_alv_grid=>mc_fc_loc_paste,         " 겹쳐쓰기.
+                  cl_gui_alv_grid=>mc_fc_loc_paste_new_row. " 겹쳐쓰기.
+
+ENDFORM. " EXCLUDE_TB_FUNCTIONS
+
+
+*----------------------------------------------------------------------*
+*  FORM  CREATE_OBJECT
+*----------------------------------------------------------------------*
+*  TEXT : Container와 ALV Object를 생성한다.
+*----------------------------------------------------------------------*
+FORM alv_create_object_acon
+      TABLES pt_output
+      USING po_grid TYPE REF TO cl_gui_alv_grid
+            po_cons TYPE REF TO cl_gui_custom_container
+            pv_cons_name TYPE char10
+            pv_it_name
+            pv_structure_name.
+  "Screen PBO Module에 의해서 실행된다.
+  IF po_cons IS INITIAL.
+
+
+*    Create Customer container
+    PERFORM create_cust_container USING po_cons pv_cons_name.
+
+    "Create ALV grid container
+    PERFORM create_grid_container USING po_cons po_grid
+abap_true. " abap_true
+
+
+    PERFORM alv_append_header USING pv_it_name
+                                     pv_structure_name.
+
+    PERFORM alv_append_sort  USING pv_it_name
+                                     pv_structure_name.
+
+
+    PERFORM alv_grid_init USING po_grid
+                                 pv_cons_name.
+
+
+
+    "ALV Grid를 출력한다.
+    CALL METHOD po_grid->set_table_for_first_display
+      EXPORTING
+        is_layout            = gs_layout
+        is_variant           = gv_variant
+        it_toolbar_excluding = gt_exclude
+        i_save               = gv_save
+        i_default            = 'X'
+      CHANGING
+        it_fieldcatalog      = fieldcat[]
+        it_outtab            = pt_output[]
+        it_sort              = gt_sort[]
+        it_filter            = gt_filter[].
+
+
+  ELSE.       "Object가 이미 생성된 경우
+    PERFORM alv_table_refresh USING po_grid 'X' space.
+  ENDIF.
+
+ENDFORM. "CREATE_OBJECT
+
+
+
+
+*----------------------------------------------------------------------*
+* FORM  REGISTER_F4_FIELDS
+*----------------------------------------------------------------------*
+* TEXT : Search Help를 출력할 Field Name을 설정한다.
+*----------------------------------------------------------------------*
+FORM alv_register_f4_fields USING po_grid TYPE REF TO cl_gui_alv_grid.
+  DATA: lt_f4_data TYPE lvc_s_f4,
+        lt_f4      TYPE lvc_t_f4.
+
+*   LT_F4_DATA-FIELDNAME   = 'KSTAR'.
+*   LT_F4_DATA-REGISTER    = 'X'.
+*   LT_F4_DATA-CHNGEAFTER  = 'X'.
+*   INSERT LT_F4_DATA INTO TABLE LT_F4.
+
+  CALL METHOD po_grid->register_f4_for_fields
+    EXPORTING
+      it_f4 = lt_f4[].
+
+ENDFORM. " P3040_REGISTER_F4_FIELDS
+
+
+
+
+*----------------------------------------------------------------------*
+* FORM  P1220_FIELD_SET
+*----------------------------------------------------------------------*
+* TEXT : 탐색 도움말 Field Setting
+*----------------------------------------------------------------------*
+FORM alv_f4_field_set USING p_table
+                                          p_field
+                                          p_flag.
+  gt_fields-tabname    = p_table.
+  gt_fields-fieldname  = p_field.
+  gt_fields-selectflag = p_flag.
+  APPEND gt_fields. CLEAR gt_fields.
+
+ENDFORM. " P1220_FIELD_SET
+
+
+*&---------------------------------------------------------------------*
+*&      Form  ALV_SET_FILTER
+*&---------------------------------------------------------------------*
+*       text : 필터 정의
+*----------------------------------------------------------------------*
+FORM alv_set_filter .
+  CLEAR : gt_filter[].
+ENDFORM. " ALV_SET_FILTER
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_FIELDCAT_BRAND_0100
+*&---------------------------------------------------------------------*
+*       text : 브랜드 관련 FIELDCAT
+*----------------------------------------------------------------------*
+FORM set_fieldcat_data.
+  PERFORM alv_field_setting_call USING :
+'S'   'CHECK'      space    , "Box
+' '   'SELTEXT_L'  TEXT-c01  ,
+' '   'CHECKBOX'   'X',
+'E'   'EDIT'       'X',
+
+'S'   'ICON'      space    , "Light
+' '   'SELTEXT_L'  TEXT-c02  ,
+' '   'JUST'       'C',
+'E'   'ICON'        ' ',
+
+'S'   'WERKS'      space    , "Plant
+' '   'SELTEXT_L'  TEXT-c03  ,
+'E'   'KEY'        ' ',
+
+'S'   'MATNR'      space    , "Material
+' '   'SELTEXT_L'  TEXT-c04  ,
+' '   'REF_TABLE'  'MARA'  ,
+' '   'REF_FIELD'  'MATNR'  ,
+'E'   'KEY'        ' ',
+
+'S'   'MAKTX'      space    , "Material Description
+' '   'SELTEXT_L'  TEXT-c05  ,
+' '   'REF_TABLE'  'MAKT'  ,
+' '   'REF_FIELD'  'MAKTX'  ,
+'E'   'KEY'        ' ',
+
+'S'   'VERID'      space    , "Version
+' '   'SELTEXT_L'  TEXT-c06  ,
+'E'   'KEY'        ' ',
+
+'S'   'TEXT1'      space    , "Text
+' '   'SELTEXT_L'  TEXT-c07  ,
+' '   'REF_TABLE'  'MKAL'  ,
+' '   'REF_FIELD'  'TEXT1'  ,
+'E'   'KEY'        ' ',
+
+'S'   'MKSP'      space    , "
+' '   'SELTEXT_L'  TEXT-c08  ,
+'E'   'KEY'        ' ',
+
+
+'S'   'BSTMI'      space    , "From lot size
+' '   'SELTEXT_L'  TEXT-c09  ,
+' '   'REF_TABLE'  'MKAL'  ,
+' '   'REF_FIELD'  'BSTMI'  ,
+' '   'QFIELDNAME'  'MEINS',
+' '   'NO_ZERO'   'X',
+'E'   'KEY'        ' ',
+
+'S'   'BSTMA'      space    , "To lot size
+' '   'SELTEXT_L'  TEXT-c10  ,
+' '   'REF_TABLE'  'MKAL'  ,
+' '   'REF_FIELD'  'BSTMA'  ,
+' '   'QFIELDNAME'  'MEINS',
+' '   'NO_ZERO'   'X',
+'E'   'KEY'        ' ',
+
+'S'   'ADATU'      space    , "Valid From
+' '   'SELTEXT_L'  TEXT-c11  ,
+' '   'REF_TABLE'  'MKAL'  ,
+' '   'REF_FIELD'  'ADATU'  ,
+'E'   'KEY'        ' ',
+
+
+'S'   'BDATU'      space    , "Vailid to
+' '   'SELTEXT_L'  TEXT-c12  ,
+' '   'REF_TABLE'  'MKAL'  ,
+' '   'REF_FIELD'  'BDATU'  ,
+'E'   'KEY'        ' ',
+
+'S'   'PLNTY'      space    , "
+' '   'SELTEXT_L'  TEXT-c13  ,
+' '   'REF_TABLE'  'MAPL'  ,
+' '   'REF_FIELD'  'PLNTY'  ,
+'E'   'KEY'        ' ',
+
+'S'   'PLNNR'      space    , "Group
+' '   'SELTEXT_L'  TEXT-c14  ,
+' '   'REF_TABLE'  'MAPL'  ,
+' '   'REF_FIELD'  'PLNNR'  ,
+'E'   'KEY'        ' ',
+
+'S'   'PLNAL'      space    , "Group Counter
+' '   'SELTEXT_L'  TEXT-c15  ,
+' '   'REF_TABLE'  'MAPL'  ,
+' '   'REF_FIELD'  'PLNAL'  ,
+'E'   'KEY'        ' ',
+
+
+'S'   'MEINS'      space    ,
+' '   'SELTEXT_L'  ''  ,
+' '   'NO_OUT'   'X',
+'E'   'KEY'        ' ',
+
+
+
+
+*'S'   'ALNAG'      SPACE    , "Alternative BOM
+*' '   'SELTEXT_L'  TEXT-C15  ,
+*'E'   'KEY'        ' ',
+
+'S'   'STLAL'      space    , "Alternative BOM
+' '   'SELTEXT_L'  TEXT-c16  ,
+'E'   'KEY'        ' ',
+
+'S'   'STLAN'      space    , "
+' '   'SELTEXT_L'  TEXT-c17  , "BOM Usage
+'E'   'KEY'        ' ',
+
+*'S'   'SERKZ'      SPACE    , "Production line
+*' '   'SELTEXT_L'  TEXT-C18  ,
+*'E'   'KEY'        ' ',
+
+'S'   'MDV01'      space    , "Production line
+' '   'SELTEXT_L'  TEXT-c19  ,
+'E'   'KEY'        ' ',
+
+'S'   'ELPRO'      space    , "Issue stor. location
+' '   'SELTEXT_L'  TEXT-c20  ,
+' '   'EDIT'       ' '  ,     "APPEND 2015.07.16 EDIT SK01DV03
+'E'   'KEY'        ' ',
+*' '   'REF_TABLE'  'MKAL'  ,
+*' '   'REF_FIELD'  'ELPRO'  ,
+
+'S'   'ALORT'      space    , "Receiv. location
+' '   'SELTEXT_L'  TEXT-c21  ,
+' '   'EDIT'       ''  ,     "APPEND 2015.07.16 EDIT SK01DV03
+'E'   'KEY'        ' ',
+*' '   'REF_TABLE'  'MKAL'  ,
+*' '   'REF_FIELD'  'ALORT'  ,
+
+'S'   'MSG'      space    , "Error Message
+' '   'SELTEXT_L'  TEXT-c22  ,
+'E'   'KEY'        ' ',
+
+'S'   'BOM_LIGHT'      space    , "BOM Status
+' '   'SELTEXT_L'  TEXT-c23  ,
+' '   'NO_OUT'   'X',
+'E'   'KEY'        ' ',
+
+'S'   'ROUTING_LIGHT'      space    , "Routing Status
+' '   'SELTEXT_L'  TEXT-c24  ,
+' '   'NO_OUT'   'X',
+'E'   'KEY'        ' '.
+
+
+ENDFORM. "
+
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PV_IT_NAME  text
+*      -->P_PV_STRUCTURE_NAME  text
+*----------------------------------------------------------------------*
+FORM set_sort_data.
+*  PERFORM ALV_SORT_SETTING USING :
+*                 'S' 'FIELDNAME' 'BUKRS',
+*                 ' ' 'UP'        'X',
+*                 'E' 'SPOS'      '1'.
+
+
+
+ENDFORM. " SET_SORT_DATA
+
+
+
+
+*----------------------------------------------------------------------*
+* FORM  FIELD_SET
+*----------------------------------------------------------------------*
+* TEXT : 탐색 도움말 Field Setting
+*----------------------------------------------------------------------*
+
+
+
+
+FORM field_set TABLES pt_fields STRUCTURE help_value
+                 USING p_table  p_field p_flag.
+  pt_fields-tabname    = p_table.
+  pt_fields-fieldname  = p_field.
+  pt_fields-selectflag = p_flag.
+  APPEND pt_fields. CLEAR pt_fields.
+ENDFORM. " P2050_FIELD_SET
+
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  alv_append_sort
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->PV_ITAB_NAME       text
+*      -->PV_STRUCTURE_NAME  text
+*----------------------------------------------------------------------*
+FORM alv_append_sort USING pv_itab_name
+                                pv_structure_name.
+  CLEAR : gt_sort[], gt_sort.
+
+  CASE pv_itab_name .
+    WHEN 'GT_DATA'. PERFORM set_sort_data.
+  ENDCASE.
+ENDFORM. " ALV_APPEND_SORT
+
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CREATE_OBJECT_GCON
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GT_DATA  text
+*      -->P_GRID1  text
+*      -->P_GS_GCON2  text
+*      -->P_0065   text
+*      -->P_0066   text
+*      -->P_0067   text
+*----------------------------------------------------------------------*
+FORM alv_create_object_gcon
+       TABLES pt_output
+       USING po_grid TYPE REF TO cl_gui_alv_grid
+             po_cons TYPE REF TO cl_gui_container
+             pv_cons_name TYPE char10
+             pv_it_name
+             pv_structure_name.
+
+  "Screen PBO Module에 의해서 실행된다.
+  IF po_grid IS INITIAL.   "Object가 아직 생성되지 않은 경우
+    "Container Object 생성
+
+    "ALV Grid Object 생성
+    CREATE OBJECT po_grid
+      EXPORTING
+        i_parent      = po_cons
+        i_appl_events = 'X'.
+
+    "Field, Sort Catalog를 구성하고 ALV 초기값을 설정한다.
+    "APPEND_HEADER, APPEND_HEADER2 중 선택하여 사용
+    PERFORM alv_append_header USING pv_it_name
+                                     pv_structure_name.
+
+
+
+    PERFORM alv_append_sort  USING pv_it_name
+                                    pv_structure_name.
+
+
+
+    PERFORM alv_grid_init USING po_grid
+                                 pv_cons_name.
+
+
+
+*     call method PO_GRID->set_ready_for_input.
+
+
+
+    "ALV Grid를 출력한다.
+    CALL METHOD po_grid->set_table_for_first_display
+      EXPORTING
+        is_layout            = gs_layout
+        is_variant           = gv_variant
+        it_toolbar_excluding = gt_exclude
+        i_save               = gv_save
+        i_default            = 'X'
+      CHANGING
+        it_fieldcatalog      = fieldcat[]
+        it_outtab            = pt_output[]
+        it_sort              = gt_sort[]
+        it_filter            = gt_filter[].
+
+  ELSE.       "Object가 이미 생성된 경우
+*     PERFORM ALV_TABLE_REFRESH USING PO_GRID 'X' SPACE.
+  ENDIF.
+ENDFORM.                    "alv_create_object_gcon
+
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_TITLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GT_DOCUMENT  text
+*----------------------------------------------------------------------*
+
+
+FORM set_alv_title  TABLES   pt_doc STRUCTURE gt_document.
+  REFRESH : pt_doc.
+*  Title 내용
+*  CLEAR : PT_DOC.
+*  CONCATENATE TEXT-H01  ':'  P_BUKRS INTO PT_DOC-TEXT SEPARATED BY
+*SPACE
+*  .
+*  APPEND PT_DOC.
+
+ENDFORM.                    " SET_ALV_TITLE
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  INITIALIZATION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM initialization .
+  DATA: ls_functxt TYPE smp_dyntxt.
+  CLEAR ls_functxt.
+  ls_functxt-icon_id    = icon_list.
+  ls_functxt-icon_text  = ls_functxt-quickinfo  = TEXT-f01.
+  sscrfields-functxt_01 = ls_functxt.
+
+
+ENDFORM.                    " INITIALIZATION
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  PROCESS_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_TYPE     text
+*----------------------------------------------------------------------*
+FORM process_data  USING pv_type.
+
+  DATA: lt_data LIKE TABLE OF gt_data WITH HEADER LINE.
+
+* Get  Data
+  PERFORM get_data TABLES lt_data.
+*  Description 조회
+  PERFORM get_data_description TABLES lt_data.
+
+  PERFORM alv_cell_style TABLES lt_data.
+*  PERFORM CHECK_BOM_ROUTING TABLES LT_DATA.
+
+
+  REFRESH : gt_data.
+  IF lt_data[] IS NOT INITIAL.
+    gt_data[] = lt_data[].
+  ELSE.
+*    IF pv_type IS INITIAL.
+*      MESSAGE s005 DISPLAY LIKE 'E'.
+*      LEAVE LIST-PROCESSING.
+*    ENDIF.
+  ENDIF.
+ENDFORM.                    " PROCESS_DATA
+*&---------------------------------------------------------------------*
+*&      Form  AT_SEL_SCR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM at_sel_scr .
+  CASE sscrfields-ucomm.
+    WHEN 'FC01'.
+      CALL TRANSACTION 'ZPPG0040_ZM1V'.
+*      PERFORM XLS_SAMPLE_DOWNLOAD USING 'ZPPG0030' TEXT-F02.
+*    WHEN 'FC02'.
+*      CALL TRANSACTION
+
+  ENDCASE.
+
+ENDFORM.                    " AT_SEL_SCR
+*&---------------------------------------------------------------------*
+*&      Form  XLS_SAMPLE_DOWNLOAD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_1029   text
+*      -->P_TEXT_F02  text
+*----------------------------------------------------------------------*
+FORM xls_sample_download  USING    p_objid p_title.
+
+  DATA :
+    lv_file_filter TYPE string,
+    ld_filename    TYPE string,  "파일이름
+    ld_path        TYPE string,  "파일 경로
+    ld_fullpath    TYPE string,  "파일 전체 경로(파일이름 포함)
+    ld_result      TYPE i,       "결과
+    wwwdata_item   LIKE wwwdatatab, "웹저장소 파일 정보
+    l_file         TYPE rlgrap-filename . "파일 전체 경로
+
+
+  CLEAR :  wwwdata_item,l_file .
+
+  lv_file_filter = TEXT-f02.
+***--- Display save dialog window
+  CALL METHOD cl_gui_frontend_services=>file_save_dialog
+    EXPORTING
+      window_title      = p_title
+      default_extension = 'XLS'
+      default_file_name = p_title
+      file_filter       = lv_file_filter
+      initial_directory = 'c:_line'
+    CHANGING
+      filename          = ld_filename
+      path              = ld_path
+      fullpath          = ld_fullpath
+      user_action       = ld_result.
+
+
+
+
+  l_file = ld_fullpath.
+  CHECK l_file IS NOT INITIAL.
+
+
+
+  SELECT SINGLE *
+  INTO CORRESPONDING FIELDS OF wwwdata_item
+  FROM wwwdata WHERE objid = p_objid .
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      key         = wwwdata_item
+      destination = l_file.
+
+  CALL METHOD cl_gui_frontend_services=>execute
+    EXPORTING
+      document               = ld_fullpath
+    EXCEPTIONS
+      cntl_error             = 1
+      error_no_gui           = 2
+      bad_parameter          = 3
+      file_not_found         = 4
+      path_not_found         = 5
+      file_extension_unknown = 6
+      error_execute_failed   = 7
+      synchronous_failed     = 8
+      not_supported_by_gui   = 9
+      OTHERS                 = 10.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    EXIT .
+  ENDIF.
+ENDFORM.                    " XLS_SAMPLE_DOWNLOAD
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXCEL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_ABAP_TRUE  text
+*----------------------------------------------------------------------*
+FORM get_data  TABLES pt_data STRUCTURE gt_data.
+* Local Variance
+  DATA: lt_0040  LIKE TABLE OF zppg0040_ZM1T WITH HEADER LINE.
+
+*입력된 플랜트, 자재번호를 기준으로 자재마스타의 데이터를 읽는다
+  PERFORM get_mara_marc TABLES pt_data.
+
+
+* 태스크 리스트 유형 ,효력 시작일, 삭제 지시자 체크
+  PERFORM get_additional_data TABLES pt_data.
+
+
+* BOM정보를 읽는다
+  PERFORM get_bom TABLES pt_data.
+* 선택된 데이터를 기준으로 생산버전 생성유무를 체크
+*  PERFORM CHECK_PRODUCTION_VERSION TABLES PT_DATA LT_DATA3.
+
+* Get ARBPL
+  PERFORM get_arbpl TABLES pt_data.
+* Get MATKL
+  PERFORM get_matkl TABLES pt_data.
+* Production Version Master Data
+  PERFORM get_0040 TABLES lt_0040 pt_data.
+
+*
+  PERFORM modify_data TABLES pt_data.
+
+
+
+ENDFORM.                    " GET_EXCEL_DATA
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CELL_STYLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_OUTPUT  text
+*----------------------------------------------------------------------*
+FORM alv_cell_style  TABLES   pt_data STRUCTURE gt_data.
+  DATA: ps_data LIKE LINE OF gt_data.
+  DATA:ls_celltab TYPE lvc_s_styl.
+  LOOP AT pt_data INTO ps_data.
+    REFRESH ps_data-celltab.
+    CLEAR: ls_celltab,ps_data-celltab.
+    ls_celltab-fieldname = 'CHECK'.
+    IF ps_data-icon = icon_led_red.
+      ls_celltab-style = cl_gui_alv_grid=>mc_style_disabled.
+    ELSE.
+      ls_celltab-style = cl_gui_alv_grid=>mc_style_enabled.
+    ENDIF.
+    INSERT ls_celltab INTO TABLE ps_data-celltab.
+
+*    CLEAR: LS_CELLTAB,PS_DATA-CELLTAB.
+*    LS_CELLTAB-FIELDNAME = 'TEXT1'.
+*    IF PS_DATA-TEXT1 IS NOT INITIAL.
+*      LS_CELLTAB-STYLE = CL_GUI_ALV_GRID=>MC_STYLE_DISABLED.
+*    ELSE.
+*      LS_CELLTAB-STYLE = CL_GUI_ALV_GRID=>MC_STYLE_ENABLED.
+*    ENDIF.
+*    INSERT LS_CELLTAB INTO TABLE PS_DATA-CELLTAB.
+*
+*
+    MODIFY pt_data FROM ps_data TRANSPORTING celltab .
+    CLEAR: ps_data.
+  ENDLOOP.
+ENDFORM.                    " ALV_CELL_STYLE
+*&---------------------------------------------------------------------*
+*&      Form  GET_CHECK_MESSAGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA_MSG  text
+*      -->P_LV_MSG  text
+*      <--P_PT_DATA_MSG  text
+*      <--P_PT_DATA_ICON  text
+*----------------------------------------------------------------------*
+FORM get_check_message  USING    pi_msge
+                                 pv_msge
+                        CHANGING po_msge
+                                 p_icon.
+  CONCATENATE pi_msge '/'  pv_msge '/' INTO po_msge SEPARATED BY space.
+  p_icon = icon_led_red.
+ENDFORM.                    " GET_CHECK_MESSAGE
+*&---------------------------------------------------------------------*
+*&      Form  EXECUTE_INSERT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_NEW_PLNNR  text
+*      -->P_LV_END_PLNNR  text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  FILL_GT_TASK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+
+
+*&---------------------------------------------------------------------*
+*&      Form  CLEAR_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM clear_alv .
+*  GV_DG_SPLITTER->FREE( ).
+*
+*  CLEAR:
+*  GV_GRID,
+*  GV_DG_SPLITTER,
+*  GV_DG_DYNDOC_ID,
+*  GV_DG_PARENT_GRID,
+*  GV_DG_HTML_CNTRL,
+*  GV_DG_PARENT_HTML,
+*  GT_FIELDCAT,
+*  GS_FIELDCAT,
+*  GT_LAYOUT,
+*  GS_S_STBL,
+*  GV_COLS.
+
+ENDFORM.                    " CLEAR_ALV
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_EXIT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA_MATNR  text
+*      -->P_PT_DATA_WERKS  text
+*      -->P_PT_DATA_PLNAL  text
+*      <--P_LV_EXIT  text
+*----------------------------------------------------------------------*
+FORM check_exit  USING    p_matnr
+                          p_werks
+                          p_plnal
+                 CHANGING p_exit.
+  SELECT COUNT( * )  FROM mapl
+           WHERE matnr = p_matnr AND
+                 werks = p_werks AND
+                 plnty = 'R' AND
+                 plnal = p_plnal AND
+                 loekz = 'X'.
+  IF sy-subrc = 0.
+    p_exit = ''."
+  ELSE.
+    p_exit = 'X'.
+  ENDIF.
+
+ENDFORM.                    " CHECK_EXIT
+*&---------------------------------------------------------------------*
+*&      Form  GET_MESSAGES
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_messages .
+  READ TABLE gt_messtab WITH KEY msgtyp = 'S'.
+  IF sy-subrc = 0.
+    gv_ok = gv_ok + ( gv_index_now - gv_index_last ).
+    gt_data-icon = icon_led_green.
+    MESSAGE s039 INTO gt_data-msg.
+    WAIT UP TO 5 SECONDS.
+    PERFORM execute_ca98.  "성공했으면 CA98 콜함.
+  ELSE.
+    gv_error = gv_error + ( gv_index_now - gv_index_last ).
+    gt_data-icon = icon_led_red.
+    LOOP AT gt_messtab.
+      CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+        EXPORTING
+          msgid               = gt_messtab-msgid
+          msgnr               = gt_messtab-msgnr
+          msgv1               = gt_messtab-msgv1
+          msgv2               = gt_messtab-msgv2
+          msgv3               = gt_messtab-msgv3
+          msgv4               = gt_messtab-msgv4
+        IMPORTING
+          message_text_output = gv_mseg.
+
+      CONCATENATE gt_data-msg  '/' gv_mseg
+      INTO gt_data-msg.
+
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.                    " GET_MESSAGES
+*&---------------------------------------------------------------------*
+*&      Form  EXECUTE_CA98
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM execute_ca98 .
+  DATA: ls_option LIKE ctu_params.
+  CLEAR : gt_bdcdata, gt_bdcdata[].
+
+
+  ls_option-dismode  = p_bmode.
+  ls_option-updmode  = 'S'.
+  ls_option-defsize  = 'X'.
+  ls_option-racommit = 'X'.
+
+
+  SET PARAMETER ID 'MAT' FIELD ''.
+  SET PARAMETER ID 'WRK' FIELD ''.
+
+  PERFORM dynpro USING:
+        'X'        'RCPREDE2'       '1000',
+        ' '        'BDC_OKCODE'     '=ONLI',
+        ' '        'MATNR-LOW'      '',
+        ' '        'PLNTY-LOW'      'N',
+        ' '        'PLNNR-LOW'      gt_data-plnnr,
+        ' '        'PLNAL-LOW'      '1',
+        ' '        'STT'            'X',
+        ' '        'PROT'           'X'.
+
+  PERFORM dynpro USING:
+        'X'        'SAPLCPRE'             '1010',
+        ' '        'BDC_OKCODE'           '=BACK',
+        'X'        'SAPMSSY0'             '0120',
+        ' '        'BDC_OKCODE'           '=BACK',
+        'X'        'RCPREDE2'             '1000',
+        ' '        'BDC_OKCODE'           '/EE'.
+
+
+  CALL TRANSACTION 'CA98' USING gt_bdcdata
+        OPTIONS FROM ls_option.
+
+ENDFORM.                    " EXECUTE_CA98
+*&---------------------------------------------------------------------*
+*&      Form  DYNPRO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_3419   text
+*      -->P_3420   text
+*      -->P_3421   text
+*----------------------------------------------------------------------*
+FORM dynpro   USING    dynbegin name value.
+  CLEAR gt_bdcdata.
+  IF dynbegin = 'X'.
+    MOVE : name      TO gt_bdcdata-program,
+    value     TO gt_bdcdata-dynpro,
+    dynbegin  TO gt_bdcdata-dynbegin.
+  ELSE.
+    MOVE : name      TO gt_bdcdata-fnam,
+    value     TO gt_bdcdata-fval.
+  ENDIF.
+  APPEND gt_bdcdata.
+ENDFORM.                    " DYNPRO
+*&---------------------------------------------------------------------*
+*&      Form  GET_MTART_MEINS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA_MATNR  text
+*      <--P_PT_DATA_MTART  text
+*      <--P_PT_DATA_MEINS  text
+*----------------------------------------------------------------------*
+FORM get_mtart_meins  USING   pv_in
+                      CHANGING pv_out1
+                               pv_out2
+                               pv_out3.
+  SELECT SINGLE mtart  meins
+    INTO (pv_out1, pv_out2)
+    FROM mara
+    WHERE matnr = pv_in
+    AND lvorm <>  'X'.
+  IF sy-subrc = 0.
+    pv_out3 = 'X'."Success
+  ELSE.
+    CLEAR pv_out3.
+  ENDIF.
+ENDFORM.                    " GET_MTART_MEINS
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_WERKS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA_WERKS  text
+*      <--P_LV_EXIT  text
+*----------------------------------------------------------------------*
+FORM check_werks  USING    pv_in
+                  CHANGING pv_out.
+  SELECT COUNT( * ) FROM marc
+    WHERE werks = pv_in.
+  IF sy-subrc = 0.
+    pv_out = 'X'.
+  ELSE.
+    CLEAR pv_out.
+  ENDIF.
+ENDFORM.                    " CHECK_WERKS
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_CUST_CONTAINER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PO_CONS  text
+*      -->P_PV_CONS_NAME  text
+*----------------------------------------------------------------------*
+FORM  create_cust_container USING p_parent TYPE REF TO
+cl_gui_custom_container
+                                 p_name.
+
+  CREATE OBJECT p_parent
+    EXPORTING
+      repid          = sy-repid
+      dynnr          = sy-dynnr
+      container_name = p_name.
+
+ENDFORM.                    " CREATE_CUST_CONTAINER
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GRID_CONTAINER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PO_CONS  text
+*      -->P_PO_GRID  text
+*      -->P_ABAP_TRUE  text
+*----------------------------------------------------------------------*
+FORM create_grid_container  USING    p_parent
+                                    po_grid TYPE REF TO cl_gui_alv_grid
+                                    p_appl.
+
+  CHECK po_grid IS INITIAL.
+  CREATE OBJECT po_grid
+    EXPORTING
+      i_parent      = p_parent
+      i_appl_events = p_appl. " 'X' -> APP EVENT, '' -> SYSTEM EVENT
+
+ENDFORM.                    " CREATE_GRID_CONTAINER
+*&---------------------------------------------------------------------*
+*&      Form  DATA_COUNT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM data_count .
+  CLEAR:
+  gv_processing_success,
+  gv_processing_fail,
+  gv_processing_total.
+  gv_processing_success = gv_ok.
+  gv_processing_fail    = gv_error.
+  gv_processing_total   = gv_ok + gv_error.
+ENDFORM.                    " DATA_COUNT
+*&---------------------------------------------------------------------*
+*&      Form  CRAETE_VERSION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM craete_version .
+  DATA : lv_adatu         LIKE sy-datum,
+         lv_bdatu         LIKE sy-datum,
+         lv_adatu_str(10),
+         lv_bdatu_str(10).
+*-- BEGIN     BDC DATE FORMAT ERROR 수정 20150515   SK01DV02
+  IF p_werks = 'SK10'.
+    LOOP AT gt_data.
+      gt_data-adatu = gt_data-adatu+6(2) && gt_data-adatu+4(2) && gt_data-adatu(4) .
+      gt_data-bdatu = gt_data-bdatu+6(2) && gt_data-bdatu+4(2) && gt_data-bdatu(4) .
+      CONDENSE gt_data-bstma.
+      REPLACE ALL OCCURRENCES OF '.' IN gt_data-bstma WITH ' '.
+      REPLACE ALL OCCURRENCES OF '0' IN gt_data-bstma WITH ' '.
+
+      CONDENSE gt_data-bstmi.
+      REPLACE ALL OCCURRENCES OF '.' IN gt_data-bstmi WITH ' '.
+      REPLACE ALL OCCURRENCES OF '0' IN gt_data-bstmi WITH ' '.
+
+      MODIFY gt_data TRANSPORTING adatu bdatu bstmi bstma .
+    ENDLOOP.
+  ENDIF.
+*-- END       BDC DATE FORMAT ERROR 수정 20150515   SK01DV02
+
+  DATA: ls_option LIKE ctu_params.
+  ls_option-dismode  = p_bmode.
+  ls_option-updmode  = 'S'.
+  ls_option-defsize  = 'X'.
+  ls_option-racommit = 'X'.
+
+
+  SET PARAMETER ID 'MAT' FIELD ' ' . " 자재
+  SET PARAMETER ID 'DGR' FIELD ' '.  " MRP 관리자
+  SET PARAMETER ID 'STT' FIELD '  '. " 주요일자
+  SET PARAMETER ID 'AGR' FIELD ' ' . " 생산라인
+  SET PARAMETER ID 'PTY' FIELD ' ' . " 생산라인
+  SET PARAMETER ID 'PLN' FIELD ' ' . " 생산라인
+
+  DELETE gt_data WHERE check <> 'X'.
+
+  LOOP AT gt_data.
+    CLEAR : gt_bdcdata[], gt_bdcdata[].
+    CLEAR : gt_messtab[], gt_messtab.
+    MOVE gt_data-adatu TO lv_adatu.
+    MOVE gt_data-bdatu TO lv_bdatu.
+    WRITE lv_adatu TO lv_adatu_str.
+    WRITE lv_bdatu TO lv_bdatu_str.
+    CONDENSE gt_data-bstma.
+    REPLACE ALL OCCURRENCES OF '.' IN gt_data-bstma WITH ' '.
+    REPLACE ALL OCCURRENCES OF '0' IN gt_data-bstma WITH ' '.
+
+    CONDENSE gt_data-bstmi.
+    REPLACE ALL OCCURRENCES OF '.' IN gt_data-bstmi WITH ' '.
+    REPLACE ALL OCCURRENCES OF '0' IN gt_data-bstmi WITH ' '.
+    PERFORM dynpro  USING:
+          'X'  'SAPLCMFV'                 '1000',
+          '  ' 'BDC_OKCODE'              '=ENTE',
+          '  ' 'MKAL-WERKS'              gt_data-werks,
+          '  ' 'MKAL-MATNR'              gt_data-matnr.
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'                 '1000',
+          ' ' 'BDC_OKCODE'               '=CREA'.
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'                  '2000',
+          ' ' 'BDC_OKCODE'                '=PRFG',
+          ' ' 'MKAL_EXPAND-MATNR'         gt_data-matnr,
+          ' ' 'MKAL_EXPAND-VERID'         gt_data-verid,
+          ' ' 'MKAL_EXPAND-TEXT1'         gt_data-text1,
+
+          ' ' 'MKAL_EXPAND-MKSP'          gt_data-mksp,
+          ' ' 'MKAL_EXPAND-BSTMI'         gt_data-bstmi,
+          ' ' 'MKAL_EXPAND-BSTMA'         gt_data-bstma,
+          ' ' 'MKAL_EXPAND-ADATU'         lv_adatu_str,
+          ' ' 'MKAL_EXPAND-BDATU'         lv_bdatu_str,
+          ' ' 'MKAL_EXPAND-PLNTY'         gt_data-plnty,
+          ' ' 'MKAL_EXPAND-PLNNR'         gt_data-plnnr,
+          ' ' 'MKAL_EXPAND-ALNAL'         gt_data-plnal,
+          ' ' 'MKAL_EXPAND-STLAL'         gt_data-stlal,
+          ' ' 'MKAL_EXPAND-STLAN'         gt_data-stlan,
+          ' ' 'MKAL_EXPAND-SERKZ'         gt_data-serkz,"REM 혀용
+          ' ' 'MKAL_EXPAND-MDV01'         gt_data-mdv01,"생산라인
+          ' ' 'MKAL_EXPAND-ELPRO'         gt_data-elpro,"출고위치
+          ' ' 'MKAL_EXPAND-ALORT'         gt_data-alort."입고위치
+    PERFORM dynpro  USING:
+          'X' 'SAPMSSY0'                  '0120',
+          ' ' 'BDC_OKCODE'                '=RW'.
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'                  '2000',
+          ' ' 'BDC_OKCODE'                '=CLOS'.
+
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'                  '1000',
+          ' ' 'BDC_OKCODE'                '=SAVE'.
+
+    CALL TRANSACTION 'C223' USING gt_bdcdata
+          OPTIONS FROM ls_option
+          MESSAGES INTO gt_messtab.
+
+    PERFORM get_message.
+
+    SET PARAMETER ID 'MAT' FIELD ' ' . " 자재
+    SET PARAMETER ID 'DGR' FIELD ' '.  " MRP 관리자
+    SET PARAMETER ID 'STT' FIELD '  '. " 주요일자
+    SET PARAMETER ID 'AGR' FIELD ' ' . " 생산라인
+    SET PARAMETER ID 'PTY' FIELD ' ' . " 생산라인
+    SET PARAMETER ID 'PLN' FIELD ' ' . " 생산라인
+
+    REFRESH gt_bdcdata.
+    CLEAR : gt_bdcdata.
+
+  ENDLOOP.
+
+  gv_bapi_done = 'X'.
+ENDFORM.                    " CRAETE_VERSION
+*&---------------------------------------------------------------------*
+*&      Form  GET_MESSAGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_message .
+  CLEAR : gv_mseg.
+  PERFORM message_text_build CHANGING gv_mseg.
+
+  READ TABLE gt_messtab WITH KEY msgtyp = 'E'.
+  IF sy-subrc EQ 0.
+    gt_data-icon  =  icon_led_red.
+    gt_data-msg = gv_mseg.
+    MODIFY gt_data.
+    gv_error = gv_error + 1.
+    EXIT .
+  ENDIF.
+
+  READ TABLE gt_messtab WITH KEY msgtyp = 'S'.
+  IF sy-subrc EQ 0.
+    gt_data-icon  = icon_led_green.
+    CASE gv_okcd.
+      WHEN 'CREATE'.
+        MESSAGE s004 INTO gt_data-msg.
+      WHEN 'DELETE'.
+        MESSAGE s309 INTO gt_data-msg.
+    ENDCASE.
+    MODIFY gt_data.
+    gv_ok = gv_ok + 1.
+    EXIT.
+  ENDIF.
+
+  gt_data-icon  = icon_led_green.
+  CASE gv_okcd.
+    WHEN 'CREATE'.
+      MESSAGE s004 INTO gt_data-msg.
+    WHEN 'DELETE'.
+      MESSAGE s309 INTO gt_data-msg.
+  ENDCASE.
+  MODIFY gt_data.
+  EXIT.
+
+
+ENDFORM.                    " GET_MESSAGE
+*&---------------------------------------------------------------------*
+*&      Form  MESSAGE_TEXT_BUILD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GV_MSEG  text
+*----------------------------------------------------------------------*
+FORM message_text_build   CHANGING p_gv_mseg.
+
+  CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+    EXPORTING
+      msgid               = sy-msgid
+      msgnr               = sy-msgno
+      msgv1               = sy-msgv1
+      msgv2               = sy-msgv2
+      msgv3               = sy-msgv3
+      msgv4               = sy-msgv4
+    IMPORTING
+      message_text_output = p_gv_mseg.
+ENDFORM.                    " MESSAGE_TEXT_BUILD
+*&---------------------------------------------------------------------*
+*&      Form  DELETE_VERSION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM delete_version .
+  DATA: ls_option LIKE ctu_params.
+
+
+  ls_option-dismode  = p_bmode.
+  ls_option-updmode  = 'S'.
+  ls_option-defsize  = 'X'.
+  ls_option-racommit = 'X'.
+
+  SET PARAMETER ID 'MAT' FIELD ' ' . " 자재
+  SET PARAMETER ID 'DGR' FIELD ' '.  " MRP 관리자
+  SET PARAMETER ID 'STT' FIELD '  '. " 주요일자
+  SET PARAMETER ID 'AGR' FIELD ' ' . " 생산라인
+  SET PARAMETER ID 'PTY' FIELD ' ' . " 생산라인
+  SET PARAMETER ID 'PLN' FIELD ' ' . " 생산라인
+
+  DELETE gt_data WHERE check <> 'X'.
+
+  LOOP AT gt_data.
+
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'              '1000',
+          ' ' 'BDC_OKCODE'            '=ESEL',
+          ' ' 'MKAL-WERKS'            gt_data-werks.
+
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'              '1001',
+          '  ' 'BDC_OKCODE'           '=CRET',
+          '  ' 'RANG_MAT-LOW'         gt_data-matnr,
+          '  ' 'RANG_VER-LOW'         gt_data-verid.
+
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'              '1000',
+          '  ' 'BDC_OKCODE'           '=DELE',
+          '  ' 'MKAL_EXPAND-MARK(01)' 'X'.
+
+    PERFORM dynpro  USING:
+          'X' 'SAPLSPO1'              '0300',
+          ' ' 'BDC_OKCODE'            '=YES'.
+
+    PERFORM dynpro  USING:
+          'X' 'SAPLCMFV'             '1000',
+          ' ' 'BDC_OKCODE'           '=SAVE'.
+
+    CALL TRANSACTION 'C223' USING gt_bdcdata
+          OPTIONS FROM ls_option
+          MESSAGES INTO gt_messtab.
+
+    PERFORM get_message.
+
+    SET PARAMETER ID 'MAT' FIELD ' ' .  " 자재
+    SET PARAMETER ID 'DGR' FIELD ' '.  " MRP 관리자
+    SET PARAMETER ID 'STT' FIELD '  '. " 주요일자
+    SET PARAMETER ID 'AGR' FIELD ' ' . "
+    SET PARAMETER ID 'PTY' FIELD ' ' . "
+    SET PARAMETER ID 'PLN' FIELD ' ' . "
+
+    $$clear: gt_bdcdata, gt_messtab.
+  ENDLOOP.
+
+  gv_bapi_done = 'X'.
+
+ENDFORM.                    " DELETE_VERSION
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_BOM_ROUTING
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_bom_routing TABLES pt_data STRUCTURE gt_data.
+  LOOP AT pt_data.
+
+    TRANSLATE pt_data-matnr TO UPPER CASE.
+    $$conv_exit_input : 'ALPHA' pt_data-matnr pt_data-matnr.
+    $$conv_exit_input : 'ALPHA' pt_data-stlal pt_data-stlal.
+
+
+    CLEAR : mast.
+    SELECT SINGLE *
+    FROM  mast
+    WHERE matnr = pt_data-matnr AND
+    werks = pt_data-werks AND
+    stlan = pt_data-stlan AND
+    stlal = pt_data-stlal.
+
+    IF sy-subrc = 0.
+      CLEAR : stko.
+      SELECT SINGLE *
+      FROM stko
+      WHERE stlty = 'M' AND
+      stlnr = mast-stlnr AND
+      stlal = pt_data-stlal AND
+      datuv <= pt_data-adatu.
+
+      IF stko IS INITIAL.
+        pt_data-bom_light =  icon_led_red.
+      ELSE.
+        pt_data-bom_light =  icon_led_green.
+      ENDIF.
+      MODIFY pt_data.
+    ELSE.
+      IF pt_data-stlan IS INITIAL
+        AND pt_data-stlal IS INITIAL.
+        pt_data-bom_light =  icon_led_green.
+      ELSE.
+        pt_data-bom_light =  icon_led_red.
+      ENDIF.
+      MODIFY pt_data.
+    ENDIF.
+
+    $$conv_exit_input : 'ALPHA' pt_data-plnal pt_data-plnal.
+
+
+
+    CLEAR : mapl.
+
+    IF pt_data-plnnr IS INITIAL.
+      SELECT SINGLE *
+        FROM mapl
+        WHERE matnr = pt_data-matnr AND
+              werks = pt_data-werks AND
+              plnty =  pt_data-plnty AND  " 공정유형
+              plnal =  pt_data-plnal AND
+              datuv <= pt_data-adatu AND
+              loekz = ' ' . "그룹 키
+
+      IF sy-subrc = 0.
+        pt_data-routing_light = icon_led_green.
+        pt_data-plnnr = mapl-plnnr.
+      ELSE.
+        pt_data-routing_light = icon_led_red.
+      ENDIF.
+    ELSE.
+      SELECT SINGLE *
+        FROM mapl
+        WHERE matnr =  pt_data-matnr AND
+              werks =  pt_data-werks AND
+              plnnr =  pt_data-plnnr AND
+              plnty =  pt_data-plnty AND  " 공정유형
+              plnal =  pt_data-plnal AND
+              datuv <= pt_data-adatu AND
+              loekz = ' ' . "그룹 키
+
+      IF sy-subrc = 0.
+        pt_data-routing_light = icon_led_green.
+        pt_data-plnnr = mapl-plnnr.
+      ELSE.
+        pt_data-routing_light = icon_led_red.
+      ENDIF.
+
+    ENDIF.
+    IF pt_data-routing_light = icon_led_green AND
+         pt_data-bom_light =  icon_led_green.
+      pt_data-icon = icon_led_yellow.
+    ELSE.
+      pt_data-icon = icon_led_red.
+    ENDIF.
+    MODIFY pt_data.
+  ENDLOOP.
+ENDFORM.                    " CHECK_BOM_ROUTING
+*&---------------------------------------------------------------------*
+*&      Form  GET_BESKZ
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA_MATNR  text
+*      -->P_PT_DATA_WERKS  text
+*      <--P_LV_BESKZ  text
+*----------------------------------------------------------------------*
+FORM get_beskz  USING    p_in1
+                         p_in2
+                CHANGING p_out.
+  SELECT SINGLE beskz FROM
+    marc INTO p_out
+    WHERE matnr = p_in1
+    AND werks = p_in2.
+ENDFORM.                    " GET_BESKZ
+*&---------------------------------------------------------------------*
+*&      Form  GET_MATNR_DESC_TABLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LTS_MATNR  text
+*      -->P_LT_MAKT  text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_ADDITIONAL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_DATA1  text
+*      -->P_LT_DATA2  text
+*----------------------------------------------------------------------*
+FORM get_additional_data  TABLES   pt_data STRUCTURE gt_data
+                                   .
+
+  CHECK pt_data[] IS NOT INITIAL.
+
+  SELECT  a~matnr
+          a~werks
+          a~plnty
+          a~plnnr
+          a~plnal
+          a~zkriz
+          a~zaehl
+          b~datuv
+          b~losvn
+          b~losbs
+          b~plnme AS meins
+          b~ktext AS text1
+      FROM mapl AS a INNER JOIN plko AS b
+        ON a~plnty = b~plnty
+       AND a~plnnr = b~plnnr
+       AND a~plnal = b~plnal
+      INTO CORRESPONDING FIELDS OF  TABLE pt_data
+           FOR ALL ENTRIES IN pt_data
+     WHERE a~matnr = pt_data-matnr
+       AND a~werks = p_werks
+       AND a~plnty = 'N'
+       AND a~loekz = ''
+       AND b~loekz = ''.
+
+
+
+ENDFORM.                    " GET_ADDITIONAL_DATA
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_PRODUCTION_VERSION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_DATA2  text
+*      -->P_LT_DATA3  text
+*----------------------------------------------------------------------*
+FORM check_production_version  TABLES pt_data2 STRUCTURE gt_data
+                               pt_data3 STRUCTURE gt_data.
+  CHECK pt_data2[] IS NOT INITIAL.
+
+  SORT pt_data2 BY matnr werks plnty plnnr plnal.
+  DELETE ADJACENT DUPLICATES FROM pt_data2.
+
+  CLEAR : pt_data3, pt_data3[].
+  SELECT matnr werks verid plnty plnnr alnal
+    FROM mkal
+    INTO CORRESPONDING FIELDS OF TABLE pt_data3
+     FOR ALL ENTRIES IN pt_data2
+   WHERE matnr = pt_data2-matnr
+     AND werks = p_werks
+     AND plnty = pt_data2-plnty
+     AND plnnr = pt_data2-plnnr
+     AND alnal = pt_data2-plnal.
+
+  SORT pt_data3 BY matnr plnty plnnr alnal.
+
+  LOOP AT pt_data2.
+    CLEAR pt_data3.
+    READ TABLE pt_data3 WITH KEY matnr = pt_data2-matnr
+    plnty = pt_data2-plnty
+    plnnr = pt_data2-plnnr
+    alnal = pt_data2-plnal
+    BINARY SEARCH.
+    IF sy-subrc = 0.
+      DELETE pt_data2.
+    ENDIF.
+  ENDLOOP.
+  IF pt_data2[] IS INITIAL.
+
+    MESSAGE s005 DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.                    " CHECK_PRODUCTION_VERSION
+*&---------------------------------------------------------------------*
+*&      Form  GET_BOM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_DATA3  text
+*      -->P_LT_DATA4  text
+*----------------------------------------------------------------------*
+FORM get_bom  TABLES   pt_data3 STRUCTURE gt_data.
+  DATA: lt_data1 LIKE TABLE OF gt_data WITH HEADER LINE.
+  DATA: lt_mast1 LIKE TABLE OF mast WITH HEADER LINE.
+  DATA: lt_mast2 LIKE TABLE OF mast WITH HEADER LINE.
+  DATA: lt_mast3 LIKE TABLE OF mast WITH HEADER LINE.
+  FIELD-SYMBOLS : <lfs_mast> LIKE LINE OF lt_mast1.
+  FIELD-SYMBOLS : <lfs_data> LIKE LINE OF gt_data.
+  DATA: lv_tabix LIKE sy-tabix.
+  DATA: lv_lines TYPE i.
+  lt_data1[] = pt_data3[].
+  SORT lt_data1 BY werks matnr plnnr plnal.
+  DELETE ADJACENT DUPLICATES FROM lt_data1
+  COMPARING werks matnr plnnr plnal .
+
+  IF lt_data1[] IS NOT INITIAL.
+
+
+    SELECT
+     matnr
+     werks
+     stlan
+     stlnr
+     stlal
+      FROM mast
+      INTO CORRESPONDING FIELDS OF TABLE lt_mast1
+      FOR ALL ENTRIES IN lt_data1
+      WHERE werks = lt_data1-werks
+      AND matnr = lt_data1-matnr.
+
+
+    SORT lt_mast1 BY werks matnr stlan stlnr stlal.
+
+    LOOP AT lt_data1 ASSIGNING <lfs_data>.
+      CLEAR lv_tabix.
+      $$clear: lt_mast3.
+
+      READ TABLE lt_mast1  WITH KEY matnr
+      = <lfs_data>-matnr BINARY SEARCH.
+      IF sy-subrc = 0.
+        LOOP AT lt_mast1  ASSIGNING <lfs_mast>
+           FROM sy-tabix.
+          IF <lfs_mast>-matnr <> <lfs_data>-matnr.
+            EXIT.
+          ELSE.
+            APPEND <lfs_mast> TO lt_mast3.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+
+      LOOP AT pt_data3 WHERE
+        werks =  <lfs_data>-werks
+       AND matnr = <lfs_data>-matnr
+       AND plnnr = <lfs_data>-plnnr
+        AND plnal = <lfs_data>-plnal.
+        lv_tabix = lv_tabix + 1.
+        READ TABLE lt_mast3 INDEX lv_tabix.
+        IF sy-subrc = 0.
+          pt_data3-stlal = lt_mast3-stlal.
+          pt_data3-stlan = lt_mast3-stlan.
+
+          MODIFY pt_data3 .
+        ELSE.
+
+        ENDIF.
+
+
+      ENDLOOP.
+      CLEAR lv_lines.
+      DESCRIBE TABLE lt_mast3 LINES lv_lines.
+      IF lv_lines > lv_tabix AND lv_tabix <> 0.
+
+        DO.
+          lv_tabix = lv_tabix + 1.
+          READ TABLE lt_mast3 INDEX lv_tabix.
+          IF sy-subrc = 0.
+            pt_data3-stlal = lt_mast3-stlal.
+            pt_data3-stlan = lt_mast3-stlan.
+            APPEND pt_data3.
+          ENDIF.
+
+          IF lv_tabix = lv_lines.
+            EXIT.
+          ENDIF.
+        ENDDO.
+      ENDIF.
+    ENDLOOP.
+
+
+  ENDIF.
+ENDFORM.                    " GET_BOM
+*&---------------------------------------------------------------------*
+*&      Form  GET_ARBPL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_DAT3  text
+*----------------------------------------------------------------------*
+FORM get_arbpl  TABLES   pt_data STRUCTURE gt_data.
+* Get PLPO
+  DATA:
+    lv_cmode_imp LIKE  sy-datar,
+    lv_plnty_imp LIKE  plko-plnty,
+    lv_plnnr_imp LIKE  plko-plnnr,
+    lv_plnal_imp LIKE  plko-plnal,
+    lv_sttag_imp LIKE  plko-datuv.
+  DATA: lt_plpo LIKE TABLE OF coplpo WITH HEADER LINE.
+  LOOP AT pt_data.
+
+    CLEAR:
+          lv_cmode_imp,
+          lv_plnnr_imp,
+          lv_plnal_imp,
+          lv_sttag_imp.
+
+    lv_cmode_imp = 'R'.
+    lv_plnnr_imp = pt_data-plnnr.
+    lv_plnal_imp = pt_data-plnal.
+    lv_sttag_imp = pt_data-datuv.
+    IF lv_plnnr_imp IS NOT INITIAL AND
+       lv_plnal_imp IS NOT INITIAL AND
+       lv_sttag_imp IS NOT INITIAL.
+
+      CALL FUNCTION 'CP_EX_PLAN_READ'
+        EXPORTING
+          plnty_imp     = 'R'
+          cmode_imp     = lv_cmode_imp
+          plnnr_imp     = lv_plnnr_imp
+          plnal_imp     = lv_plnal_imp
+          sttag_imp     = lv_sttag_imp
+        TABLES
+          plpo_exp      = lt_plpo
+        EXCEPTIONS
+          not_found     = 1
+          plnal_initial = 2
+          OTHERS        = 3.
+
+      IF sy-subrc = 0.
+        READ TABLE lt_plpo INDEX 1.
+        SELECT SINGLE arbpl ktext FROM crhd_v1
+              INTO  (pt_data-arbpl, pt_data-ktext)
+              WHERE objid = lt_plpo-arbid
+              AND spras = sy-langu.
+        pt_data-mdv01 = pt_data-arbpl.
+        MODIFY pt_data TRANSPORTING mdv01 arbpl ktext.
+      ENDIF.
+
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    " GET_ARBPL
+*&---------------------------------------------------------------------*
+*&      Form  GET_MARA_MARC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA  text
+*----------------------------------------------------------------------*
+FORM get_mara_marc  TABLES   pt_data STRUCTURE gt_data.
+
+  $$clear : r_beskz.
+  $$append_ranges : r_beskz 'I' 'EQ' 'E' ''.
+  $$append_ranges : r_beskz 'I' 'EQ' 'X' ''.
+
+  SELECT
+   a~matnr
+
+   c~werks
+   FROM mara AS a
+   INNER JOIN marc AS c
+   ON a~matnr = c~matnr
+  INTO CORRESPONDING FIELDS OF TABLE pt_data
+  WHERE c~werks = p_werks
+    AND a~matnr IN s_matnr
+    AND c~beskz IN r_beskz
+    AND a~lvorm <> 'X'
+    AND c~lvorm <> 'X'.
+
+ENDFORM.                    " GET_MARA_MARC
+*&---------------------------------------------------------------------*
+*&      Form  FREE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM free_alv .
+  IF NOT grid1 IS INITIAL.
+    CALL METHOD grid1->free.
+  ENDIF.
+  IF NOT gs_dcon1 IS INITIAL.
+    CALL METHOD gs_dcon1->free.
+  ENDIF.
+
+  CALL METHOD cl_gui_cfw=>flush
+    EXCEPTIONS
+      cntl_system_error = 1
+      cntl_error        = 2.
+
+  CLEAR:  grid1, gs_dcon1.
+
+ENDFORM.                    " FREE_ALV
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA_DESCRIPTION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_DATA  text
+*----------------------------------------------------------------------*
+FORM get_data_description  TABLES   pt_data STRUCTURE gt_data.
+  "Insert correct name for <...>.
+  DATA :
+    lts_matnr TYPE TABLE OF gy_search WITH HEADER LINE,
+    lts_werks TYPE TABLE OF gy_search WITH HEADER LINE,
+    lt_t001w  TYPE TABLE OF t001w     WITH HEADER LINE,
+    lt_makt   TYPE TABLE OF makt      WITH HEADER LINE.
+
+  CHECK pt_data[] IS NOT INITIAL.
+
+  LOOP AT pt_data.
+    lts_matnr-matnr = pt_data-matnr. COLLECT lts_matnr.
+*    LTS_WERKS-WERKS = PT_DATA-WERKS. COLLECT LTS_WERKS.
+  ENDLOOP.
+
+*  Material
+  PERFORM get_matnr_desc_table TABLES lts_matnr lt_makt.
+* Plant
+*  PERFORM GET_WERKS_DESC_TABLE  TABLES LTS_WERKS LT_T001W.
+
+  LOOP AT pt_data.
+    $$read_table pt_data :
+                           matnr maktx lt_makt matnr maktx.
+    "WERKS WERKS_T  LT_T001W WERKS NAME1.
+
+    MODIFY pt_data TRANSPORTING  maktx." WERKS_T .
+  ENDLOOP.
+
+ENDFORM.                    " GET_DATA_DESCRIPTION
+*&---------------------------------------------------------------------*
+*&      Form  GET_0040
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_0040  text
+*----------------------------------------------------------------------*
+FORM get_0040  TABLES   pt_0040 STRUCTURE zppg0040_ZM1t
+                        pt_data STRUCTURE gt_data.
+
+  DATA: lv_bklas LIKE mbew-bklas.
+
+  FIELD-SYMBOLS: <lf_wa> LIKE LINE OF gt_data.
+  $$clear : pt_0040.
+  SELECT * FROM
+    zppg0040_ZM1t
+    INTO CORRESPONDING FIELDS OF TABLE pt_0040
+    WHERE werks = p_werks.
+  "Insert correct name for <...>.
+  SORT pt_0040 BY werks plnty arbpl matkl.
+
+  LOOP AT pt_data ASSIGNING <lf_wa>.
+
+***  Change by Zhoush 2014.08.26
+
+*    READ TABLE PT_0040 WITH KEY
+*    WERKS = <LF_WA>-WERKS
+*    PLNTY = <LF_WA>-PLNTY
+*    ARBPL = <LF_WA>-ARBPL
+*    MATKL = <LF_WA>-MATKL.
+*    IF SY-SUBRC = 0.
+*      <LF_WA>-ELPRO = PT_0040-ELPRO.
+*      <LF_WA>-ALORT = PT_0040-ALORT.
+*    ELSE.
+*      READ TABLE PT_0040 WITH KEY
+*      WERKS = <LF_WA>-WERKS
+*      PLNTY = <LF_WA>-PLNTY
+*      ARBPL = <LF_WA>-ARBPL.
+**    MATKL = <LF_WA>-MATKL.
+*      IF SY-SUBRC = 0.
+*        <LF_WA>-ELPRO = PT_0040-ELPRO.
+*        <LF_WA>-ALORT = PT_0040-ALORT.
+*      ENDIF.
+*    ENDIF.
+
+    IF <lf_wa>-werks = 'CN40'.
+      IF <lf_wa>-arbpl = '6NRD1’'.
+        <lf_wa>-elpro = 'P200'.
+        <lf_wa>-alort = '6200'.
+      ELSE.
+        SELECT SINGLE bklas INTO lv_bklas
+          FROM mbew
+         WHERE matnr = <lf_wa>-matnr
+           AND bwkey = <lf_wa>-werks.
+        IF lv_bklas = '7920'.
+          <lf_wa>-elpro = 'P100'.
+          <lf_wa>-alort = '6100'.
+        ELSEIF lv_bklas = '7900'.
+          <lf_wa>-elpro = 'P100'.
+          <lf_wa>-alort = 'P100'.
+        ENDIF.
+      ENDIF.
+    ELSE.
+      READ TABLE pt_0040 WITH KEY
+        werks = <lf_wa>-werks
+        plnty = <lf_wa>-plnty
+        arbpl = <lf_wa>-arbpl
+        matkl = <lf_wa>-matkl.
+      IF sy-subrc = 0.
+        <lf_wa>-elpro = pt_0040-elpro.
+        <lf_wa>-alort = pt_0040-alort.
+      ELSE.
+        READ TABLE pt_0040 WITH KEY
+        werks = <lf_wa>-werks
+        plnty = <lf_wa>-plnty
+        arbpl = <lf_wa>-arbpl.
+*    MATKL = <LF_WA>-MATKL.
+        IF sy-subrc = 0.
+          <lf_wa>-elpro = pt_0040-elpro.
+          <lf_wa>-alort = pt_0040-alort.
+        ENDIF.
+        READ TABLE pt_0040 WITH KEY
+        werks = <lf_wa>-werks
+        plnty = <lf_wa>-plnty.
+*        arbpl = <lf_wa>-arbpl.
+*        MATKL = <LF_WA>-MATKL.
+        IF sy-subrc = 0.
+          <lf_wa>-elpro = pt_0040-elpro.
+          <lf_wa>-alort = pt_0040-alort.
+        ENDIF.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.                    " GET_0040
+*&---------------------------------------------------------------------*
+*&      Form  MODIFY_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_DATA2  text
+*----------------------------------------------------------------------*
+FORM modify_data  TABLES   pt_data STRUCTURE gt_data.
+  "Insert correct name for <...>.
+  DATA: lv_msg TYPE string.
+  LOOP AT pt_data.
+
+*기본값 :, 생산버전(01, DM :  bom대체번호),
+*효력시작일 : sysdate, 효력만료일:9999.12.31
+*REM허용: Default Check
+
+***  Change by Zhoush 2014.08.22
+*    IF P_WERKS = 'CN20' OR P_WERKS = 'CN40'.
+*** Change by KMJ 2015.07.13  조건 추가
+    IF p_werks = 'CN20' OR p_werks = 'CN40' OR p_werks = 'SK10'.
+      pt_data-verid = pt_data-plnal.
+    ELSE.
+      pt_data-verid = pt_data-stlal.
+    ENDIF.
+
+    pt_data-adatu = sy-datum.
+    pt_data-bdatu = c_bdatu.
+    pt_data-serkz = c_serkz.
+    pt_data-adatu = pt_data-datuv.
+    pt_data-bstmi = pt_data-losvn.
+    pt_data-bstma = pt_data-losbs.
+
+    SELECT COUNT( * ) FROM mkal
+      WHERE matnr  = pt_data-matnr
+      AND   werks  = pt_data-werks
+      AND   verid  = pt_data-verid.
+    IF sy-subrc = 0.
+*     PT_DATA-EXIST = 'X'.
+      DELETE pt_data.
+      CONTINUE.
+    ENDIF.  "2014.04.08 TEMP
+
+    TRANSLATE pt_data-matnr TO UPPER CASE.
+    $$conv_exit_input : 'ALPHA' pt_data-matnr pt_data-matnr.
+    $$conv_exit_input : 'ALPHA' pt_data-stlal pt_data-stlal.
+
+
+    CLEAR : mast.
+    SELECT SINGLE *
+    FROM  mast
+    WHERE matnr = pt_data-matnr AND
+    werks = pt_data-werks AND
+    stlan = pt_data-stlan AND
+    stlal = pt_data-stlal.
+
+    IF sy-subrc = 0.
+      CLEAR : stko.
+      SELECT SINGLE *
+      FROM stko
+      WHERE stlty = 'M' AND
+      stlnr = mast-stlnr AND
+      stlal = pt_data-stlal . "AND
+*      DATUV <= PT_DATA-ADATU.
+
+      IF stko IS INITIAL.
+        pt_data-bom_light =  icon_led_red.
+      ELSE.
+        pt_data-bom_light =  icon_led_green.
+      ENDIF.
+
+    ELSE.
+      IF pt_data-stlan IS INITIAL
+        AND pt_data-stlal IS INITIAL.
+        pt_data-bom_light =  icon_led_green.
+      ELSE.
+        pt_data-bom_light =  icon_led_red.
+      ENDIF.
+
+    ENDIF.
+
+    $$conv_exit_input : 'ALPHA' pt_data-plnal pt_data-plnal.
+
+
+
+    CLEAR : mapl.
+
+    IF pt_data-plnnr IS INITIAL.
+      SELECT SINGLE *
+        FROM mapl
+        WHERE matnr = pt_data-matnr AND
+              werks = pt_data-werks AND
+              plnty =  pt_data-plnty AND  " 공정유형
+              plnal =  pt_data-plnal AND
+              datuv <= pt_data-adatu AND
+              loekz = ' ' . "그룹 키
+
+      IF sy-subrc = 0.
+        pt_data-routing_light = icon_led_green.
+        pt_data-plnnr = mapl-plnnr.
+      ELSE.
+        pt_data-routing_light = icon_led_red.
+      ENDIF.
+    ELSE.
+      SELECT SINGLE *
+        FROM mapl
+        WHERE matnr =  pt_data-matnr AND
+              werks =  pt_data-werks AND
+              plnnr =  pt_data-plnnr AND
+              plnty =  pt_data-plnty AND  " 공정유형
+              plnal =  pt_data-plnal AND
+              datuv <= pt_data-adatu AND
+              loekz = ' ' . "그룹 키
+
+      IF sy-subrc = 0.
+        pt_data-routing_light = icon_led_green.
+        pt_data-plnnr = mapl-plnnr.
+      ELSE.
+        pt_data-routing_light = icon_led_red.
+      ENDIF.
+
+    ENDIF.
+
+    IF   pt_data-bom_light =  icon_led_red.
+      CLEAR : lv_msg.
+      MESSAGE s401 INTO lv_msg.
+      CONCATENATE pt_data-msg lv_msg INTO
+      pt_data-msg.
+    ENDIF.
+
+    IF pt_data-routing_light = icon_led_red.
+      CLEAR : lv_msg.
+      MESSAGE s402 INTO lv_msg.
+      CONCATENATE pt_data-msg lv_msg INTO
+      pt_data-msg.
+    ENDIF.
+
+    IF p_werks = 'CN50' OR  p_werks = 'US10'.
+    ELSE.
+      IF pt_data-elpro IS  INITIAL.
+        CLEAR : lv_msg.
+        lv_msg = TEXT-m01.
+        CONCATENATE pt_data-msg lv_msg INTO
+        pt_data-msg.
+      ENDIF.
+
+      IF pt_data-alort IS  INITIAL.
+        CLEAR : lv_msg.
+        lv_msg = TEXT-m02.
+        CONCATENATE pt_data-msg lv_msg INTO
+        pt_data-msg.
+      ENDIF.
+    ENDIF.
+
+
+* Set Icon
+    IF pt_data-msg IS INITIAL.
+      pt_data-icon = icon_led_yellow.
+
+    ELSE.
+      pt_data-icon = icon_led_red.
+    ENDIF.
+
+
+    MODIFY pt_data.
+
+  ENDLOOP.
+
+
+ENDFORM.                    " MODIFY_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_MATKL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PT_DATA  text
+*----------------------------------------------------------------------*
+FORM get_matkl  TABLES  pt_data STRUCTURE gt_data.
+  "Insert correct name for <...>.
+  FIELD-SYMBOLS: <lf_wa> LIKE LINE OF gt_data.
+  DATA: lt_mara LIKE TABLE OF mara WITH HEADER LINE.
+  DATA: lt_data LIKE TABLE OF gt_data WITH HEADER LINE.
+
+  lt_data[] = pt_data[].
+  SORT lt_data BY matnr.
+  DELETE ADJACENT DUPLICATES FROM lt_data
+  COMPARING matnr.
+
+  SELECT matnr matkl
+    FROM mara
+    INTO CORRESPONDING FIELDS OF TABLE lt_mara
+    FOR ALL ENTRIES IN lt_data
+    WHERE matnr = lt_data-matnr.
+  "Insert correct name for <...>.
+  SORT lt_mara BY matnr.
+
+  LOOP AT pt_data ASSIGNING <lf_wa>.
+    READ TABLE lt_mara WITH KEY
+    matnr = <lf_wa>-matnr.
+    IF sy-subrc = 0.
+      <lf_wa>-matkl = lt_mara-matkl.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.                    " GET_MATKL
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> &1
+
+*Text elements
+*----------------------------------------------------------
+* C01 Box
+* C02 Light
+* C03 Plant
+* C04 Material
+* C05 Material Description
+* C06 Version
+* C07 Text
+* C08 Prod.vers.locked
+* C09 From lot size
+* C10 To lot size
+* C11 Valid From
+* C12 Valid to
+* C13 Task List Type
+* C14 Group
+* C15 Group Counter
+* C16 Alternative BOM
+* C17 BOM Usage
+* C18 REM allowed
+* C19 Production line
+* C20 Issue stor. location
+* C21 Receiv. location
+* C22 Error Message
+* C23 BOM Status
+* C24 Routing Status
+* F01 Master Data Setup
+* F02 Routing Maintenance
+* M01 No Issue stor. location
+* M02 No Receiv. location
+* S01 Selection Options
+* S02 BDC Mode
+
+
+*Selection texts
+*----------------------------------------------------------
+* P_BMODE D       .
+* P_WERKS D       .
+* S_MATNR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: 00
+*001   &1&2&3&4&5&6&7&8
+*
+* Message class: PT_RETURN-ID
+*PT_
+*
+* Message class: Z00CAM
+*004
+*020
+*
+* Message class: ZCAGM
+*001   &
+*002   & &
+*012   Yes
+*013   No
+*
+* Message class: ZCOEMSG
+*002
+*
+* Message class: ZPPGM
+*004   Success!
+*005   No Data!
+*039
+*307   Select Data.
+*309   Deleted
+*401   BOM error in material &.
+*402   Routing error in matnerial &.
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> Production Version Mainternance
+
+*Text elements
+*----------------------------------------------------------
+* C01 Box
+* C02 Light
+* C03 Plant
+* C04 Material
+* C05 Material Description
+* C06 Version
+* C07 Text
+* C08 Prod.vers.locked
+* C09 From lot size
+* C10 To lot size
+* C11 Valid From
+* C12 Valid to
+* C13 Task List type
+* C14 Group
+* C15 Group Counter
+* C16 Alternative BOM
+* C17 BOM Usage
+* C19 Production line
+* C20 Issue stor. location
+* C21 Receiv. location
+* C22 Error Message
+* C23 BOM Status
+* C24 Rounting Status
+* F01 Master Data Setup
+
+
+*Selection texts
+*----------------------------------------------------------
+* P_BMODE         BDC Mode
+* P_WERKS         Plant
+* S_MATNR         Material
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: 00
+*001   &1&2&3&4&5&6&7&8
+*
+* Message class: PT_RETURN-ID
+*PT_
+*
+* Message class: Z00CAM
+*004
+*020
+*
+* Message class: ZCAGM
+*001
+*002
+*012
+*013
+*
+* Message class: ZCOEMSG
+*002
+*
+* Message class: ZPPGM
+*004   Success!
+*005   No Data!
+*039
+*307   Select Data.
+*309   Deleted
+*401
+*402
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

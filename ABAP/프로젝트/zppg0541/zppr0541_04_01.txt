@@ -1,0 +1,92 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPPR0541_04_01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT ZPPR05401_04_01 NO STANDARD PAGE HEADING MESSAGE-ID ZPPM1.
+
+INCLUDE ZPPR0541_04_01_TOP                      .    " global Data
+
+ INCLUDE ZPPR0541_04_01_O01                      .  " PBO-Modules
+* INCLUDE ZPPR0541_04_01_I01                      .  " PAI-Modules
+ INCLUDE ZPPR0541_04_01_F01                      .  " FORM-Routines
+
+*&---------------------------------------------------------------------*
+*& START-OF-SELECTION.
+*&---------------------------------------------------------------------*
+START-OF-SELECTION.
+
+  PERFORM CHECKING_DATA CHANGING GS_PARM-ERROR.
+  CHECK GS_PARM-ERROR IS INITIAL.
+
+  CHECK G_SUBRC <> 'E'.
+  PERFORM GET_EXCEL_DATA.
+  PERFORM DATE_CHECK.
+  PERFORM PROCESS_DATA.
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> Screen
+
+*Text elements
+*----------------------------------------------------------
+* 000 Template
+* 001 Selection Condition
+* 002 Plan Type
+* 003 Yearly
+* 004 Monthly
+* 008 File Name
+* 009 It is not a Production Plant
+* 010 error in fields 'Planning Version' !
+* 011 error in fields 'Year' !  only choose  'Y'
+* 012 error in fields 'Year/Month' !  only choose  'M'
+* 013 The material is not exist!
+* 014 The material has not BOM data!
+* 015 The material has not Routing data!
+* 016 The material has not produciton version data!
+* 017 Box
+* 018 Light
+* 019 Plant
+* 020 Material
+* 021 Description
+* 022 Material Group
+* 023 DM Version
+* 024 Error Message
+* 025 Yearly Production Plan
+* 026 Monthly Production Plan
+* 027 Year :
+* 028 Year/Month :
+* 029 Total
+* 030 Check Reqmts Plan (Format: Y____)!
+* 031 Check Reqmts Plan (Format: M____)!
+* 032 Material Type
+* 033 FERT/FERM(FINISH-Product)
+* 034 HALB(Semi-Product)
+* 041 Naming Rule of requirement plan key
+* 042 1. Case : Create Yearly PIR
+* 043        'Y'+ Year + Serial(2) // Ex : Y201201, Y201301, Y201302...
+* 044 2. Case : Create Monthly PIR
+* 045        'M'+ Year + Month + Serial(2) // Ex : M20120901,M20120902
+
+
+*Selection texts
+*----------------------------------------------------------
+* P_C1         Check Master Data
+* P_FILE D       .
+* P_MONTH D       .
+* P_PBDNR D       .
+* P_YEAR D       .
+* S_WERKS D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPPM1
+*000
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

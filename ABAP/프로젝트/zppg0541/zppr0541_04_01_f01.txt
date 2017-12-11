@@ -1,0 +1,3222 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPPR0541_04_01_F01
+*&---------------------------------------------------------------------*
+FORM CREATE_ICON .
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      NAME                  = 'ICON_XXL'
+    IMPORTING
+      RESULT                = SSCRFIELDS-FUNCTXT_01
+    EXCEPTIONS
+      ICON_NOT_FOUND        = 1
+      OUTPUTFIELD_TOO_SHORT = 2
+      OTHERS                = 3.
+
+  CONCATENATE SSCRFIELDS-FUNCTXT_01 TEXT-000
+              INTO SSCRFIELDS-FUNCTXT_01. "SEPARATED BY SPACE.
+
+  DATA YEAR LIKE P_YEAR.
+*####
+  P_YEAR = SY-DATUM(04) + 1.
+*####
+  IF SY-DATUM+04(02) = 12.
+    YEAR = SY-DATUM(04) + 1.
+    CONCATENATE YEAR '01' INTO P_MONTH.
+  ELSE.
+    P_MONTH = SY-DATUM(06) + 1.
+  ENDIF.
+
+
+
+ENDFORM. " CREATE_ICON
+*&---------------------------------------------------------------------*
+*&      Form  F4_PBDNR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM F4_PBDNR USING P_PBDNR.
+  DATA : BEGIN OF LT_PBDNR OCCURS 0,
+          PBDNR LIKE PBIM-PBDNR,
+         END OF LT_PBDNR.
+  RANGES : S_WERKS1 FOR MSEG-WERKS.
+  DATA : L_WINDOW_TITLE(30) TYPE C.
+  DATA : L_RETURN_TAB       TYPE TABLE OF DDSHRETVAL,
+         L_RETURN_WA        LIKE LINE OF  L_RETURN_TAB.
+  DATA : L_FIELDNAME TYPE  LVC_FNAME.
+  DATA : P_PBDNR1 LIKE PBIM-PBDNR.
+
+  DATA: LT_DYNPREAD TYPE STANDARD TABLE OF DYNPREAD .
+  DATA: LW_DYNPREAD TYPE DYNPREAD .
+
+  LW_DYNPREAD-FIELDNAME = 'S_WERKS-LOW'.
+  APPEND LW_DYNPREAD TO LT_DYNPREAD .
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      DYNAME               = SY-REPID
+      DYNUMB               = SY-DYNNR
+    TABLES
+      DYNPFIELDS           = LT_DYNPREAD
+    EXCEPTIONS
+      INVALID_ABAPWORKAREA = 1
+      INVALID_DYNPROFIELD  = 2
+      INVALID_DYNPRONAME   = 3
+      INVALID_DYNPRONUMMER = 4
+      INVALID_REQUEST      = 5
+      NO_FIELDDESCRIPTION  = 6
+      INVALID_PARAMETER    = 7
+      UNDEFIND_ERROR       = 8
+      DOUBLE_CONVERSION    = 9
+      STEPL_NOT_FOUND      = 10
+      OTHERS               = 11.
+  IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  CLEAR : S_WERKS1 ,S_WERKS1[].
+  LOOP AT LT_DYNPREAD INTO LW_DYNPREAD.
+
+    CASE LW_DYNPREAD-FIELDNAME.
+      WHEN 'S_WERKS-LOW'.
+        IF  LW_DYNPREAD-FIELDVALUE IS NOT INITIAL.
+          S_WERKS1-SIGN    = 'I'.
+          S_WERKS1-OPTION  = 'EQ'.
+          S_WERKS1-LOW     = LW_DYNPREAD-FIELDVALUE .
+          APPEND S_WERKS1.
+        ENDIF.
+    ENDCASE.
+  ENDLOOP.
+
+  CLEAR : LT_PBDNR, LT_PBDNR[].
+  SELECT PBDNR FROM PBIM
+    INTO TABLE LT_PBDNR
+    WHERE WERKS IN S_WERKS.
+
+  DELETE LT_PBDNR WHERE PBDNR = ' '.
+
+  IF LT_PBDNR[] IS NOT INITIAL.
+    SORT LT_PBDNR BY PBDNR.
+    DELETE ADJACENT DUPLICATES FROM LT_PBDNR.
+    LOOP AT LT_PBDNR.
+      IF P_RAD1 = 'X'.
+        IF LT_PBDNR-PBDNR(01) <> 'Y'.
+          DELETE LT_PBDNR .
+        ENDIF.
+      ELSEIF P_RAD2 = 'X'.
+        IF LT_PBDNR-PBDNR(01) <> 'M'.
+          DELETE LT_PBDNR .
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+
+  CLEAR L_FIELDNAME.
+  L_FIELDNAME = 'PBDNR'.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      RETFIELD        = L_FIELDNAME
+      DYNPPROG        = SY-REPID
+      DYNPNR          = SY-DYNNR
+      WINDOW_TITLE    = L_WINDOW_TITLE
+      VALUE_ORG       = 'S'
+    TABLES
+      VALUE_TAB       = LT_PBDNR[]
+      RETURN_TAB      = L_RETURN_TAB
+    EXCEPTIONS
+      PARAMETER_ERROR = 1
+      NO_VALUES_FOUND = 2
+      OTHERS          = 3.
+
+  IF SY-SUBRC = 0.
+    CLEAR L_RETURN_WA.
+    READ TABLE L_RETURN_TAB INTO L_RETURN_WA INDEX 1.
+    IF SY-SUBRC = 0.
+      P_PBDNR = L_RETURN_WA-FIELDVAL.
+    ENDIF.
+  ENDIF.
+ENDFORM. " F4_PBDNR
+*&---------------------------------------------------------------------*
+*&      Form  F4_YEAR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM F4_YEAR .
+  CALL FUNCTION 'REAL_ESTATE_F4_YEAR'
+    EXPORTING
+      I_YEAR        = P_YEAR
+      I_POPUP_TITLE = ' '
+    IMPORTING
+      E_YEAR        = P_YEAR.
+ENDFORM. " F4_YEAR
+*&---------------------------------------------------------------------*
+*&      Form  F4_MONTH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM F4_MONTH .
+  GET CURSOR FIELD MF_DYNPFIELDS-FIELDNAME.
+  APPEND MF_DYNPFIELDS.
+  MF_HLP_REPID = SY-REPID.
+  DO 2 TIMES.
+    CALL FUNCTION 'DYNP_VALUES_READ'
+      EXPORTING
+        DYNAME               = MF_HLP_REPID
+        DYNUMB               = SY-DYNNR
+      TABLES
+        DYNPFIELDS           = MF_DYNPFIELDS
+      EXCEPTIONS
+        INVALID_ABAPWORKAREA = 01
+        INVALID_DYNPROFIELD  = 02
+        INVALID_DYNPRONAME   = 03
+        INVALID_DYNPRONUMMER = 04
+        INVALID_REQUEST      = 05
+        NO_FIELDDESCRIPTION  = 06
+        UNDEFIND_ERROR       = 07.
+    IF SY-SUBRC = 3.
+*     Aktuelles Dynpro ist Wertemengenbild
+      MF_HLP_REPID = 'SAPLALDB'.
+    ELSE.
+      READ TABLE MF_DYNPFIELDS INDEX 1.
+*     Unterstriche durch Blanks ersetzen
+      TRANSLATE MF_DYNPFIELDS-FIELDVALUE USING '_ '.
+      EXIT.
+    ENDIF.
+  ENDDO.
+  IF SY-SUBRC = 0.
+*   Konvertierung ins interne Format
+    CALL FUNCTION 'CONVERSION_EXIT_PERI_INPUT'
+      EXPORTING
+        INPUT         = MF_DYNPFIELDS-FIELDVALUE
+      IMPORTING
+        OUTPUT        = MF_MONAT
+      EXCEPTIONS
+        ERROR_MESSAGE = 1.
+    IF MF_MONAT IS INITIAL.
+*     Monat ist initial => Vorschlagswert aus akt. Datum ableiten
+      MF_MONAT = SY-DATLO(6).
+    ENDIF.
+    CALL FUNCTION 'POPUP_TO_SELECT_MONTH'
+      EXPORTING
+        ACTUAL_MONTH               = MF_MONAT
+      IMPORTING
+        SELECTED_MONTH             = MF_MONAT
+        RETURN_CODE                = MF_RETURNCODE
+      EXCEPTIONS
+        FACTORY_CALENDAR_NOT_FOUND = 01
+        HOLIDAY_CALENDAR_NOT_FOUND = 02
+        MONTH_NOT_FOUND            = 03.
+    IF SY-SUBRC = 0 AND MF_RETURNCODE = 0.
+*     ASSIGN (MF_DYNPFIELDS-FIELDNAME) TO <MF_FELD>. " ==>> note 148804
+*     <MF_FELD> = MF_MONAT.
+      CALL FUNCTION 'CONVERSION_EXIT_PERI_OUTPUT'
+        EXPORTING
+          INPUT  = MF_MONAT
+        IMPORTING
+          OUTPUT = MF_DYNPFIELDS-FIELDVALUE.
+      COLLECT MF_DYNPFIELDS.
+      CALL FUNCTION 'DYNP_VALUES_UPDATE'
+        EXPORTING
+          DYNAME               = MF_HLP_REPID
+          DYNUMB               = SY-DYNNR
+        TABLES
+          DYNPFIELDS           = MF_DYNPFIELDS
+        EXCEPTIONS
+          INVALID_ABAPWORKAREA = 01
+          INVALID_DYNPROFIELD  = 02
+          INVALID_DYNPRONAME   = 03
+          INVALID_DYNPRONUMMER = 04
+          INVALID_REQUEST      = 05
+          NO_FIELDDESCRIPTION  = 06
+          UNDEFIND_ERROR       = 07.           "<<== note 148804
+    ENDIF.
+  ENDIF.
+ENDFORM. " F4_MONTH
+
+*&---------------------------------------------------------------------*
+*&      Form  MODIFY_SCREEN
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM MODIFY_SCREEN .
+  LOOP AT SCREEN.
+    IF P_RAD1 = 'X'.
+      IF  SCREEN-GROUP1 = 'M1'.
+        SCREEN-ACTIVE = 0.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDIF.
+    IF P_RAD2 = 'X'.
+      IF  SCREEN-GROUP1 = 'Y1'.
+        SCREEN-ACTIVE = 0.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+ENDFORM. " MODIFY_SCREEN
+*&---------------------------------------------------------------------*
+*&      Form  SCREEN_MESSAGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM SCREEN_MESSAGE .
+
+  CASE SSCRFIELDS-UCOMM.
+    WHEN 'FC01'.
+      PERFORM DOWNLOAD_EXCLE_TEMPLATE.
+  ENDCASE.
+
+*  IF P_RAD1 = 'X'.
+*    IF P_PBDNR(01) <> 'Y'.
+*      MESSAGE TEXT-030 TYPE 'E'.
+*    ENDIF.
+*  ELSEIF P_RAD2 = 'X'.
+*    IF P_PBDNR(01) <> 'M'.
+*      MESSAGE TEXT-031 TYPE 'E'.
+*    ENDIF.
+*  ENDIF.
+*20121130 ###### ## ## ####
+*  IF P_RAD4 <> 'X'.
+*    SELECT SINGLE PLTGB
+*      INTO P_PLTGB
+*      FROM ZPPT026
+*      WHERE WERKS IN S_WERKS.
+*
+*    IF P_PLTGB <> 'P'.
+*      MESSAGE TEXT-009 TYPE 'E'.
+*    ENDIF.
+*
+*  ELSE.
+*
+*    SELECT SINGLE PLTGB PLTCH
+*    INTO (P_PLTGB , P_PLTCH)
+*    FROM ZPPT026
+*    WHERE WERKS IN S_WERKS.
+*
+*    IF P_PLTGB = 'P' OR P_PLTCH = 'A'.
+*    ELSE.
+*      MESSAGE TEXT-009 TYPE 'E'.
+*      STOP.
+*    ENDIF.
+*  ENDIF.
+
+ENDFORM. " SCREEN_MESSAGE
+*&---------------------------------------------------------------------*
+*&      Form  F4_FILEPATH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_P_FILE  text
+*      -->P_0040   text
+*      -->P_0041   text
+*----------------------------------------------------------------------*
+FORM F4_FILEPATH USING     P_PATH
+                           P_FILTER
+                           P_TITLE.
+
+  CALL FUNCTION 'WS_FILENAME_GET'
+   EXPORTING
+     DEF_FILENAME           = P_PATH
+     DEF_PATH               = 'C:\ '
+*     MASK                   = ' '
+*     MODE                   = ' '
+*     TITLE                  = ' '
+   IMPORTING
+     FILENAME               = P_PATH
+   EXCEPTIONS
+     INV_WINSYS             = 1
+     NO_BATCH               = 2
+     SELECTION_CANCEL       = 3
+     SELECTION_ERROR        = 4
+     OTHERS                 = 5
+            .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+*  call function 'Z_MM_GET_FILE_NAME_04'
+*    EXPORTING
+*      I_FILTER   = P_FILTER
+*      I_TITLE    = P_TITLE
+*      I_DEF_PATH = P_PATH
+*    IMPORTING
+*      E_FILENAME = P_PATH.
+*
+*  IF SY-SUBRC <> 0.
+*    G_SUBRC = 'E'.
+*  ENDIF.
+
+ENDFORM. " F4_FILEPATH
+*&---------------------------------------------------------------------*
+*&      Form  DOWNLOAD_EXCLE_TEMPLATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM DOWNLOAD_EXCLE_TEMPLATE .
+  DATA: L_FILENAME TYPE STRING,
+        L_PATH TYPE STRING,
+        L_FULLPATH TYPE STRING,
+        L_FILELENGTH TYPE I.
+  DATA: BEGIN OF WA_YEAR OCCURS 0,
+        FILED01(20) TYPE C VALUE 'DM Version',
+        FILED02(20) TYPE C VALUE 'Material',
+        FILED03(20) TYPE C VALUE 'Description',
+        FILED04(20) TYPE C VALUE 'M1',
+        FILED05(20) TYPE C VALUE 'M2',
+        FILED06(20) TYPE C VALUE 'M3',
+        FILED07(20) TYPE C VALUE 'M4',
+        FILED08(20) TYPE C VALUE 'M5',
+        FILED09(20) TYPE C VALUE 'M6',
+        FILED10(20) TYPE C VALUE 'M7',
+        FILED11(20) TYPE C VALUE 'M8',
+        FILED12(20) TYPE C VALUE 'M9',
+        FILED13(20) TYPE C VALUE 'M10',
+        FILED14(20) TYPE C VALUE 'M11',
+        FILED15(20) TYPE C VALUE 'M12',
+    END OF WA_YEAR.
+
+  DATA : LT_YEAR LIKE TABLE OF WA_YEAR.
+
+  DATA: BEGIN OF WA_MONTH OCCURS 0,
+        FILED01(20) TYPE C VALUE 'DM Version',
+        FILED02(20) TYPE C VALUE 'Material',
+        FILED03(20) TYPE C VALUE 'Description',
+        FILED04(20) TYPE C VALUE 'M1',
+        FILED05(20) TYPE C VALUE 'M2',
+        FILED06(20) TYPE C VALUE 'M3',
+        FILED07(20) TYPE C VALUE 'M4',
+        FILED08(20) TYPE C VALUE 'M5',
+        END OF WA_MONTH.
+
+  DATA: LT_MONTH LIKE TABLE OF WA_MONTH.
+
+  INCLUDE OLE2INCL.
+
+  DATA: APPLICATION TYPE OLE2_OBJECT,
+        WORKBOOK TYPE OLE2_OBJECT,
+        SHEET TYPE OLE2_OBJECT,
+        CELLS TYPE OLE2_OBJECT.
+
+  DATA: L_INDEX(2) TYPE N.
+
+  DATA: L_FIELD(20) TYPE C.
+
+  FIELD-SYMBOLS: <VALUE>.
+
+  CREATE OBJECT APPLICATION 'excel.application'.
+  SET PROPERTY OF APPLICATION 'visible' = 1.
+  CALL METHOD OF
+      APPLICATION
+      'Workbooks' = WORKBOOK.
+  CALL METHOD OF
+      WORKBOOK
+      'Add'.
+
+* Create first Excel Sheet
+  CALL METHOD OF
+      APPLICATION
+      'Worksheets' = SHEET
+    EXPORTING
+      #1           = 1.
+  CALL METHOD OF
+      SHEET
+      'Activate'.
+  SET PROPERTY OF SHEET 'NAME' = 'SHEET1'.
+*  READ TABLE IT_TITLE INDEX 1.
+  CLEAR L_INDEX.
+  DO 70 TIMES.
+    ADD 1 TO L_INDEX.
+    CALL METHOD OF
+        SHEET
+        'Cells' = CELLS
+      EXPORTING
+        #1      = L_INDEX.
+    IF P_RAD1 = 'X'.
+      CONCATENATE 'WA_YEAR-FILED' L_INDEX INTO L_FIELD.
+    ELSEIF P_RAD2 = 'X'.
+      CONCATENATE 'WA_MONTH-FILED' L_INDEX INTO L_FIELD.
+    ENDIF.
+    ASSIGN (L_FIELD) TO <VALUE>.
+    IF SY-SUBRC <> 0. EXIT. ENDIF.
+    SET PROPERTY OF CELLS 'Value' = <VALUE>.
+  ENDDO.
+
+* Save excel speadsheet to particular filename
+  CALL METHOD OF
+      SHEET
+      'SaveAs'
+
+    EXPORTING
+      #1       = 'c:\\exceldoc1.xls'
+      #2       = 1."filename
+*  fileFormat
+
+  CHECK SY-SUBRC EQ 0.
+  CHECK NOT L_FULLPATH IS INITIAL.
+ENDFORM. " DOWNLOAD_EXCLE_TEMPLATE
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXCEL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_EXCEL_DATA .
+
+  DATA : BEGIN OF LT_MARA OCCURS 0,
+    MATNR LIKE MARA-MATNR,
+    MTART LIKE MARA-MTART,
+    END OF LT_MARA.
+
+  DATA: IT_RAW TYPE TRUXS_T_TEXT_DATA.
+  IF P_RAD1 = 'X'.
+    CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+      EXPORTING
+*       I_FIELD_SEPERATOR    =
+        I_LINE_HEADER        = 'X'
+        I_TAB_RAW_DATA       = IT_RAW
+        I_FILENAME           = P_FILE
+      TABLES
+        I_TAB_CONVERTED_DATA = YEAR_UPLOAD
+      EXCEPTIONS
+        CONVERSION_FAILED    = 1
+        OTHERS               = 2.
+    IF SY-SUBRC <> 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+*##### ###
+*## ### ### ### ### ##
+
+    LOOP AT YEAR_UPLOAD.
+      CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+        EXPORTING
+          INPUT  = YEAR_UPLOAD-FILED2
+        IMPORTING
+          OUTPUT = YEAR_UPLOAD-FILED2.
+      MODIFY YEAR_UPLOAD.
+    ENDLOOP.
+
+    CHECK YEAR_UPLOAD[] IS NOT INITIAL.
+    SELECT MATNR MTART
+      INTO CORRESPONDING FIELDS OF TABLE LT_MARA
+      FROM MARA
+      FOR ALL ENTRIES IN YEAR_UPLOAD
+     WHERE MATNR = YEAR_UPLOAD-FILED2.
+
+    SORT LT_MARA.
+
+    DESCRIBE TABLE YEAR_UPLOAD LINES G_LINES.
+
+    LOOP AT YEAR_UPLOAD.
+*##### ###
+*## ### ### ### ### ##
+      CASE 'X'.
+        WHEN P_RAD3."FERM/FERT
+          READ TABLE LT_MARA WITH KEY MATNR = YEAR_UPLOAD-FILED2
+          BINARY SEARCH.
+*          IF LT_MARA-MTART <> 'FERT' OR LT_MARA-MTART <> 'FERM'.
+*            G_COUNT = G_COUNT + 1.
+*            CONTINUE.
+*          ENDIF.
+          CASE LT_MARA-MTART.
+            WHEN 'FERT' OR 'FERM'.
+            WHEN OTHERS.
+              G_COUNT = G_COUNT + 1.
+              CONTINUE.
+          ENDCASE.
+        WHEN P_RAD4."HALB
+          READ TABLE LT_MARA WITH KEY MATNR = YEAR_UPLOAD-FILED2
+          BINARY SEARCH.
+          IF LT_MARA-MTART <> 'HALB'.
+            G_COUNT = G_COUNT + 1.
+            CONTINUE.
+          ENDIF.
+      ENDCASE.
+
+      IF YEAR_UPLOAD-FILED1(01) <> 'Y'.
+        GT_EXCEL-G_TYPE = 'E'.
+        GT_EXCEL-G_MESSAGE = TEXT-011.
+      ELSEIF YEAR_UPLOAD-FILED1 <> 'Y1' AND
+         YEAR_UPLOAD-FILED1 <> 'Y2' AND
+         YEAR_UPLOAD-FILED1 <> 'Y3' AND
+         YEAR_UPLOAD-FILED1 <> 'Y4' AND
+         YEAR_UPLOAD-FILED1 <> 'Y5' AND
+         YEAR_UPLOAD-FILED1 <> 'Y6'.
+        GT_EXCEL-G_TYPE = 'E'.
+        GT_EXCEL-G_MESSAGE = TEXT-010.
+      ENDIF.
+      GT_EXCEL-VERSB = YEAR_UPLOAD-FILED1.
+      GT_EXCEL-MATNR = YEAR_UPLOAD-FILED2.
+      GT_EXCEL-MAKTX = YEAR_UPLOAD-FILED3.
+      GT_EXCEL-M1    = YEAR_UPLOAD-FILED4.
+      GT_EXCEL-M2    = YEAR_UPLOAD-FILED5.
+      GT_EXCEL-M3    = YEAR_UPLOAD-FILED6.
+      GT_EXCEL-M4    = YEAR_UPLOAD-FILED7.
+      GT_EXCEL-M5    = YEAR_UPLOAD-FILED8.
+      GT_EXCEL-M6    = YEAR_UPLOAD-FILED9.
+      GT_EXCEL-M7    = YEAR_UPLOAD-FILED10.
+      GT_EXCEL-M8    = YEAR_UPLOAD-FILED11.
+      GT_EXCEL-M9    = YEAR_UPLOAD-FILED12.
+      GT_EXCEL-M10   = YEAR_UPLOAD-FILED13.
+      GT_EXCEL-M11   = YEAR_UPLOAD-FILED14.
+      GT_EXCEL-M12   = YEAR_UPLOAD-FILED15.
+
+      CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+       EXPORTING
+         INPUT              = GT_EXCEL-MATNR
+       IMPORTING
+         OUTPUT             = GT_EXCEL-MATNR
+*       EXCEPTIONS
+*         LENGTH_ERROR       = 1
+*         OTHERS             = 2
+          .
+      IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+      ENDIF.
+      REPLACE ALL OCCURRENCES OF '-' IN GT_EXCEL-MATNR WITH SPACE.
+      COLLECT GT_EXCEL.
+      CLEAR   GT_EXCEL.
+    ENDLOOP.
+
+  ELSEIF P_RAD2 = 'X'.
+    CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+      EXPORTING
+*       I_FIELD_SEPERATOR    =
+        I_LINE_HEADER        = 'X'
+        I_TAB_RAW_DATA       = IT_RAW
+        I_FILENAME           = P_FILE
+      TABLES
+        I_TAB_CONVERTED_DATA = MONTH_UPLOAD
+      EXCEPTIONS
+        CONVERSION_FAILED    = 1
+        OTHERS               = 2.
+    IF SY-SUBRC <> 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+
+*##### ###
+*## ### ### ### ### ##
+
+    LOOP AT MONTH_UPLOAD.
+      CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+        EXPORTING
+          INPUT  = MONTH_UPLOAD-FILED2
+        IMPORTING
+          OUTPUT = MONTH_UPLOAD-FILED2.
+      MODIFY MONTH_UPLOAD.
+    ENDLOOP.
+
+    CHECK MONTH_UPLOAD[] IS NOT INITIAL.
+    SELECT MATNR MTART
+      INTO CORRESPONDING FIELDS OF TABLE LT_MARA
+      FROM MARA
+      FOR ALL ENTRIES IN MONTH_UPLOAD
+     WHERE MATNR = MONTH_UPLOAD-FILED2.
+
+    SORT LT_MARA.
+
+    DESCRIBE TABLE MONTH_UPLOAD LINES G_LINES.
+
+    LOOP AT MONTH_UPLOAD.
+*##### ###
+*## ### ### ### ### ##
+      CASE 'X'.
+        WHEN P_RAD3."FERM/FERT
+          READ TABLE LT_MARA WITH KEY MATNR = MONTH_UPLOAD-FILED2
+          BINARY SEARCH.
+
+          CASE LT_MARA-MTART.
+            WHEN 'FERT' OR 'FERM'.
+            WHEN OTHERS.
+              CONTINUE.
+          ENDCASE.
+
+        WHEN P_RAD4."HALB
+          READ TABLE LT_MARA WITH KEY MATNR = MONTH_UPLOAD-FILED2
+          BINARY SEARCH.
+          IF LT_MARA-MTART <> 'HALB'.
+            G_COUNT = G_COUNT + 1.
+            CONTINUE.
+          ENDIF.
+      ENDCASE.
+
+      IF MONTH_UPLOAD-FILED1(01) <> 'M'.
+*-- 00으로 진행하기 위해 주석처리. 2017.11.24
+*        GT_EXCEL-G_TYPE = 'E'.
+*        GT_EXCEL-G_MESSAGE = TEXT-012.
+      ELSEIF MONTH_UPLOAD-FILED1 <> 'M1' AND
+         MONTH_UPLOAD-FILED1 <> 'M2' AND
+         MONTH_UPLOAD-FILED1 <> 'M3' AND
+         MONTH_UPLOAD-FILED1 <> 'M4' AND
+         MONTH_UPLOAD-FILED1 <> 'M5' AND
+         MONTH_UPLOAD-FILED1 <> 'M6'.
+        GT_EXCEL-G_TYPE = 'E'.
+        GT_EXCEL-G_MESSAGE = TEXT-010.
+      ENDIF.
+      GT_EXCEL-VERSB = MONTH_UPLOAD-FILED1.
+      GT_EXCEL-MATNR = MONTH_UPLOAD-FILED2.
+      GT_EXCEL-MAKTX = MONTH_UPLOAD-FILED3.
+      GT_EXCEL-M1    = MONTH_UPLOAD-FILED4.
+      GT_EXCEL-M2    = MONTH_UPLOAD-FILED5.
+      GT_EXCEL-M3    = MONTH_UPLOAD-FILED6.
+      GT_EXCEL-M4    = MONTH_UPLOAD-FILED7.
+      GT_EXCEL-M5    = MONTH_UPLOAD-FILED8.
+
+
+      CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+       EXPORTING
+         INPUT              = GT_EXCEL-MATNR
+       IMPORTING
+         OUTPUT             = GT_EXCEL-MATNR
+*       EXCEPTIONS
+*         LENGTH_ERROR       = 1
+*         OTHERS             = 2
+          .
+      IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+      ENDIF.
+      COLLECT GT_EXCEL.
+      CLEAR   GT_EXCEL.
+    ENDLOOP.
+  ENDIF.
+
+
+ENDFORM. " GET_EXCEL_DATA
+*&---------------------------------------------------------------------*
+*&      Form  PROCESS_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM PROCESS_DATA .
+  IF P_RAD1 = 'X'.
+    CONCATENATE P_YEAR '01' '01' INTO P_DATE.
+  ELSEIF P_RAD2 = 'X'.
+    CONCATENATE P_MONTH '01' INTO P_DATE.
+  ENDIF.
+*-- Get display header data.
+  PERFORM GET_HEADER_DATA.
+
+  IF GT_ITAB[] IS NOT INITIAL.
+*-- Get material master data
+    PERFORM GET_MARA_MARC_DATA.
+*-- Get material bom data
+    PERFORM GET_MAST_DATA.
+*-- get material routing data
+    PERFORM GET_MAPL_DATA.
+*-- Get material production version data
+    PERFORM GET_MKAL_DATA.
+*-- Get material desc data
+    PERFORM GET_MAKT_DATA.
+  ENDIF.
+
+  SORT GT_ITAB BY MATNR.
+  LOOP AT GT_ITAB.
+    GS3 = GS3 + 1.
+    IF GT_ITAB-G_TYPE = 'E'.
+      GT_ITAB-G_ICON = ICON_LED_RED.
+      GS2 = GS2 + 1.
+      MODIFY GT_ITAB.
+      CLEAR  GT_ITAB.
+      CONTINUE.
+    ENDIF.
+    CLEAR GT_MAKT.
+    READ TABLE GT_MAKT WITH KEY MATNR = GT_ITAB-MATNR
+                                      BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      GT_ITAB-MAKTX = GT_MAKT-MAKTX.
+    ENDIF.
+
+    CLEAR GT_MARA.
+    READ TABLE GT_MARA WITH KEY MATNR = GT_ITAB-MATNR
+                                      BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      GT_ITAB-MATKL = GT_MARA-MATKL.
+      GT_ITAB-MTART = GT_MARA-MTART.
+      GT_ITAB-LVORM = GT_MARA-LVORM.
+      GT_ITAB-MMSTA = GT_MARA-MMSTA.
+    ENDIF.
+*** ##CHECKBOX ########### JZ.XU
+    IF P_C1 = 'X'.
+      IF GT_ITAB-MTART <> 'FERM' AND GT_ITAB-MTART <> 'FERT'.
+        IF GT_ITAB-MTART <> 'HALB'.
+          GT_ITAB-G_TYPE = 'E'.
+          GT_ITAB-G_MESSAGE = 'The material is not exist!'.
+          GT_ITAB-G_ICON = ICON_LED_RED.
+          GS2 = GS2 + 1.
+          MODIFY GT_ITAB.
+          CLEAR  GT_ITAB.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+
+      IF GT_ITAB-LVORM = 'X'.
+        GT_ITAB-G_TYPE = 'E'.
+        GT_ITAB-G_MESSAGE = 'The material is not exist!'.
+        GT_ITAB-G_ICON = ICON_LED_RED.
+        GS2 = GS2 + 1.
+        MODIFY GT_ITAB.
+        CLEAR  GT_ITAB.
+        CONTINUE.
+      ENDIF.
+
+      IF GT_ITAB-MMSTA <> ' ' AND GT_ITAB-MMSTA <> 'BO'.
+        GT_ITAB-G_TYPE = 'E'.
+        GT_ITAB-G_MESSAGE = 'The material is not exist!'.
+        GT_ITAB-G_ICON = ICON_LED_RED.
+        GS2 = GS2 + 1.
+        MODIFY GT_ITAB.
+        CLEAR  GT_ITAB.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR GT_MAST.
+      READ TABLE GT_MAST WITH KEY MATNR = GT_ITAB-MATNR
+                                        BINARY SEARCH.
+      IF SY-SUBRC <> 0.
+        GT_ITAB-G_TYPE = 'E'.
+        GT_ITAB-G_MESSAGE = TEXT-014.
+        GT_ITAB-G_ICON = ICON_LED_RED.
+        GS2 = GS2 + 1.
+        MODIFY GT_ITAB.
+        CLEAR  GT_ITAB.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR GT_MAPL.
+      READ TABLE GT_MAPL WITH KEY MATNR = GT_ITAB-MATNR
+                                        BINARY SEARCH.
+      IF SY-SUBRC <> 0.
+        GT_ITAB-G_TYPE = 'E'.
+        GT_ITAB-G_MESSAGE = TEXT-015.
+        GT_ITAB-G_ICON = ICON_LED_RED.
+        GS2 = GS2 + 1.
+        MODIFY GT_ITAB.
+        CLEAR  GT_ITAB.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR GT_MKAL.
+      READ TABLE GT_MKAL WITH KEY MATNR = GT_ITAB-MATNR
+                                        BINARY SEARCH.
+      IF SY-SUBRC <> 0.
+        GT_ITAB-G_TYPE = 'E'.
+        GT_ITAB-G_MESSAGE = TEXT-016.
+        GT_ITAB-G_ICON = ICON_LED_RED.
+        GS2 = GS2 + 1.
+        MODIFY GT_ITAB.
+        CLEAR  GT_ITAB.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+
+    GT_ITAB-G_TYPE = 'S'.
+    GT_ITAB-G_ICON = ICON_LED_YELLOW.
+    GS1 = GS1 + 1.
+    MODIFY GT_ITAB.
+    CLEAR  GT_ITAB.
+  ENDLOOP.
+
+*  PBIM #### ### ###
+*  #### ##### ### #### #####
+  PERFORM GET_PBIM.
+
+  CALL SCREEN 100.
+
+ENDFORM. " PROCESS_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_MARA_MARC_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_MARA_MARC_DATA .
+  CLEAR : GT_MARA, GT_MARA[].
+  CHECK GT_ITAB[] IS NOT INITIAL.
+
+  SELECT A~MATNR A~MATKL A~MTART B~LVORM B~MMSTA
+    FROM MARA AS A INNER JOIN MARC AS B
+      ON A~MATNR = B~MATNR
+    INTO TABLE GT_MARA
+     FOR ALL ENTRIES IN GT_ITAB
+   WHERE B~WERKS = S_WERKS-LOW
+     AND A~MATNR = GT_ITAB-MATNR.
+*     AND A~MTART IN ('FERM','FERT')
+*     AND A~MATKL IN S_MATKL
+*     AND B~LVORM <> 'X'
+*     AND ( B~MMSTA = '' OR B~MMSTA = 'BO').
+  SORT GT_MARA.
+ENDFORM. " GET_MARA_MARC_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_MAST_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_MAST_DATA .
+  CLEAR : GT_MAST, GT_MAST[].
+  CHECK GT_ITAB[] IS NOT INITIAL.
+  SELECT MATNR WERKS STLAN STLNR STLAL
+    FROM MAST
+    INTO TABLE GT_MAST
+     FOR ALL ENTRIES IN GT_ITAB
+   WHERE WERKS = S_WERKS-LOW
+     AND STLAN = '1'
+     AND MATNR = GT_ITAB-MATNR.
+  SORT GT_MAST BY MATNR.
+ENDFORM. " GET_MAST_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_MAPL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_MAPL_DATA .
+  CLEAR : GT_MAPL, GT_MAPL[].
+  CHECK GT_ITAB[] IS NOT INITIAL.
+  SELECT MATNR WERKS PLNTY PLNNR PLNAL ZKRIZ ZAEHL
+    FROM MAPL
+    INTO TABLE GT_MAPL
+     FOR ALL ENTRIES IN GT_ITAB
+   WHERE WERKS = S_WERKS-LOW
+     AND PLNTY IN ('N','R')
+     AND MATNR = GT_ITAB-MATNR
+     AND DATUV <= P_DATE.
+  SORT GT_MAPL BY MATNR.
+ENDFORM. " GET_MAPL_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_MKAL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_MKAL_DATA .
+  CLEAR : GT_MKAL, GT_MKAL[].
+  CHECK GT_ITAB[] IS NOT INITIAL.
+  SELECT MATNR WERKS VERID
+    FROM MKAL
+    INTO TABLE GT_MKAL
+     FOR ALL ENTRIES IN GT_ITAB
+   WHERE WERKS = S_WERKS-LOW
+     AND MATNR = GT_ITAB-MATNR
+     AND ADATU <= P_DATE.
+  SORT GT_MKAL BY MATNR.
+ENDFORM. " GET_MKAL_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_MAKT_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_MAKT_DATA .
+  CLEAR : GT_MAKT, GT_MAKT[].
+  CHECK GT_ITAB[] IS NOT INITIAL.
+  SELECT MATNR MAKTX
+    FROM MAKT
+    INTO TABLE GT_MAKT
+     FOR ALL ENTRIES IN GT_ITAB
+   WHERE MATNR = GT_ITAB-MATNR
+     AND SPRAS = SY-LANGU.
+  SORT GT_MAKT BY MATNR.
+ENDFORM. " GET_MAKT_DATA
+*&---------------------------------------------------------------------*
+*&      Form  DATE_CHECK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM DATE_CHECK .
+  READ TABLE S_WERKS INDEX 1.
+  IF P_RAD1 = 'X'.
+*    CASE S_WERKS-LOW.
+*      WHEN '2111' OR '2112' OR '2113' OR '2121' OR '2311'.
+    PERFORM YEAR_DATE_2.
+*      WHEN OTHERS.
+*        PERFORM YEAR_DATE.
+*    ENDCASE.
+    PERFORM PRO_Y_DATA.
+  ELSEIF P_RAD2 = 'X'.
+*    CASE S_WERKS-LOW.
+*      WHEN '2111' OR '2112' OR '2113' OR '2121' OR '2311'.
+    PERFORM MONTH_DATE_2.
+*      WHEN OTHERS.
+*        PERFORM MONTH_DATE.
+*    ENDCASE.
+    PERFORM PRO_M_DATA.
+  ENDIF.
+ENDFORM. " DATE_CHECK
+*&---------------------------------------------------------------------*
+*&      Form  MONTH_DATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM MONTH_DATE .
+  DATA M_YEAR  LIKE P_YEAR.
+  DATA M_MONTH LIKE P_MONTH.
+  DATA N_MONTH(02) TYPE C.
+  DATA D_DAY  LIKE SY-DATUM.
+  DATA M_MONTH1 LIKE M_MONTH.
+  DATA WEEK_NUMBER(02) TYPE C.
+
+
+  CONCATENATE P_MONTH '01' INTO M_DATE-M_LOW .
+  APPEND M_DATE.
+
+  DO 4 TIMES.
+    SORT M_DATE DESCENDING BY M_LOW.
+    READ TABLE M_DATE INDEX 1.
+    IF M_DATE-M_LOW+04(02) = 12.
+      M_YEAR = P_MONTH(04) + 01.
+      CONCATENATE M_YEAR '01' '01' INTO M_DATE-M_LOW.
+      APPEND M_DATE.
+    ELSE.
+      CLEAR M_MONTH.
+      N_MONTH = M_DATE-M_LOW+04(02) + 1.
+      IF N_MONTH < 10.
+        CONCATENATE '0' N_MONTH INTO N_MONTH.
+      ENDIF.
+      CONCATENATE M_DATE-M_LOW(04) N_MONTH INTO M_MONTH.
+      CONCATENATE M_MONTH '01' INTO M_DATE-M_LOW.
+      APPEND M_DATE.
+    ENDIF.
+  ENDDO.
+
+  SORT M_DATE BY M_LOW.
+  LOOP AT M_DATE.
+    CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+      EXPORTING
+        DAY_IN            = M_DATE-M_LOW
+      IMPORTING
+        LAST_DAY_OF_MONTH = M_DATE-M_HIGH
+      EXCEPTIONS
+        DAY_IN_NO_DATE    = 1
+        OTHERS            = 2.
+    MODIFY M_DATE.
+
+    CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+      EXPORTING
+        I_DATE_FROM    = M_DATE-M_LOW
+        I_KEY_DAY_FROM = '00'
+        I_DATE_TO      = M_DATE-M_HIGH
+        I_KEY_DAY_TO   = '00'
+        I_FLG_SEPARATE = ''
+      IMPORTING
+        E_DAYS         = M_DATE-SUM.
+    CLEAR D_DAY.
+
+    D_DAY = M_DATE-M_LOW.
+
+    CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+      EXPORTING
+        LANGU = SY-LANGU
+        DATE  = D_DAY
+      IMPORTING
+        DAYNR = M_DAY-DAYNR.
+
+    IF M_DAY-DAYNR = 6.
+      M_DAY-TYPE = 'X'.
+      M_DAY-DAY  = D_DAY.
+      M_DAY-WEEK = '-W1'.
+      WEEK_NUMBER = 1.
+      M_DAY-DAY1 = M_DAY-DAY(06).
+      CONCATENATE M_DAY-DAY(04) '.' M_DAY-DAY+04(02)
+            M_DAY-WEEK INTO M_DAY-WEEK.
+      APPEND M_DAY.
+    ENDIF.
+
+
+    DO  M_DATE-SUM TIMES.
+
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL_ZA'
+        EXPORTING
+          DATE      = D_DAY
+          DAYS      = '1'
+          MONTHS    = '00'
+          SIGNUM    = '+'
+          YEARS     = '00'
+        IMPORTING
+          CALC_DATE = D_DAY.
+
+      M_DAY-DAY = D_DAY.
+
+      CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+        EXPORTING
+          LANGU = SY-LANGU
+          DATE  = M_DAY-DAY
+        IMPORTING
+          DAYNR = M_DAY-DAYNR.
+
+      IF M_DAY-DAYNR = 6.
+        M_DAY-TYPE = 'X'.
+        IF M_MONTH1 <> M_DAY-DAY(06).
+          IF WEEK_NUMBER IS NOT INITIAL.
+            M_DAY-TYPE = 'X'.
+            WEEK_NUMBER = WEEK_NUMBER + 1.
+            CONCATENATE '-W' WEEK_NUMBER INTO M_DAY-WEEK.
+          ELSE.
+            M_MONTH1 = M_DAY-DAY.
+            M_DAY-WEEK = '-W1'.
+            WEEK_NUMBER = 1.
+          ENDIF.
+        ELSEIF M_MONTH1 = M_DAY-DAY(06).
+          WEEK_NUMBER = WEEK_NUMBER + 1.
+          CONCATENATE '-W' WEEK_NUMBER INTO M_DAY-WEEK.
+        ENDIF.
+        M_DAY-DAY1 = M_DAY-DAY(06).
+        M_DAY-SUM = 1.
+        CONCATENATE M_DAY-DAY(04) '.' M_DAY-DAY+04(02)
+                    M_DAY-WEEK INTO M_DAY-WEEK.
+        APPEND M_DAY.
+      ENDIF.
+
+      IF M_DAY-DAY = M_DATE-M_HIGH.
+        IF M_DAY-DAYNR < 6.
+          M_DAY-TYPE = 'X'.
+          IF M_MONTH1 <> M_DAY-DAY(06).
+            M_MONTH1 = M_DAY-DAY.
+            M_DAY-WEEK = '-W1'.
+            WEEK_NUMBER = 1.
+          ELSEIF M_MONTH1 = M_DAY-DAY(06).
+            WEEK_NUMBER = WEEK_NUMBER + 1.
+            CONCATENATE '-W' WEEK_NUMBER INTO M_DAY-WEEK.
+          ENDIF.
+          M_DAY-DAY1 = M_DAY-DAY(06).
+          M_DAY-SUM = 1.
+          CONCATENATE M_DAY-DAY(04) '.' M_DAY-DAY+04(02)
+                      M_DAY-WEEK INTO M_DAY-WEEK.
+          APPEND M_DAY.
+        ENDIF.
+      ENDIF.
+    ENDDO.
+    CLEAR WEEK_NUMBER.
+  ENDLOOP.
+
+  LOOP AT M_DAY.
+    MOVE-CORRESPONDING M_DAY TO GT_SUM.
+    COLLECT GT_SUM.
+    CLEAR   GT_SUM.
+  ENDLOOP.
+  SORT GT_SUM BY DAY1.
+ENDFORM. " MONTH_DATE
+*&---------------------------------------------------------------------*
+*&      Form  YEAR_DATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM YEAR_DATE .
+  DATA D_NUMBER(02).
+  DATA D_DAYNR LIKE HRVSCHED-DAYNR.
+
+  DO 12 TIMES.
+    D_NUMBER = D_NUMBER + 1.
+    IF D_NUMBER < 10.
+      CONCATENATE '0' D_NUMBER INTO D_NUMBER.
+    ENDIF.
+    CONCATENATE P_YEAR '.' D_NUMBER INTO Y_DATE-MONTH.
+    APPEND Y_DATE.
+  ENDDO.
+
+  LOOP AT Y_DATE.
+    CONCATENATE Y_DATE-MONTH(04) Y_DATE-MONTH+05(02)
+                '01' INTO Y_DATE-DAY.
+    CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+      EXPORTING
+        DAY_IN            = Y_DATE-DAY
+      IMPORTING
+        LAST_DAY_OF_MONTH = Y_DATE-DAY
+      EXCEPTIONS
+        DAY_IN_NO_DATE    = 1
+        OTHERS            = 2.
+
+    CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+      EXPORTING
+        LANGU = SY-LANGU
+        DATE  = Y_DATE-DAY
+      IMPORTING
+        DAYNR = D_DAYNR.
+
+    IF D_DAYNR = 7.
+      Y_DATE-DAY = Y_DATE-DAY - 1.
+    ENDIF.
+    MODIFY Y_DATE.
+  ENDLOOP.
+
+ENDFORM. " YEAR_DATE
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+  SET PF-STATUS '0100' EXCLUDING 'BAPI'.
+  SET TITLEBAR  '0100'.
+ENDMODULE. " STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE EXIT INPUT.
+*  SET SCREEN 0.
+  LEAVE TO SCREEN 0.
+ENDMODULE. " EXIT INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT.
+
+  CLEAR : GS6.
+  CLEAR SAVE_CODE.
+  SAVE_CODE = OK_CODE.
+  CLEAR OK_CODE.
+  CALL METHOD G_GRID->CHECK_CHANGED_DATA.
+  PERFORM CHECK_DATA.
+  CASE SAVE_CODE.
+    WHEN 'BAPI'.
+      GS6 = GS1.
+      CLEAR GT_ITAB.
+      READ TABLE GT_ITAB WITH KEY BDC_TYPE = 'S'.
+      CLEAR : VERSB-LOW,VERSB-HIGH.
+      IF SY-SUBRC <> 0.
+        IF P_RAD1 = 'X'.
+          VERSB-LOW = 'Y1'.
+          VERSB-HIGH = 'Y6'.
+        ELSEIF P_RAD2 = 'X'.
+          VERSB-LOW = 'M1'.
+          VERSB-HIGH = 'M6'.
+        ENDIF.
+        PERFORM BDC_MD74_DATA.
+        PERFORM BDC_MD75_DATA.
+        PERFORM BDC_MD76_DATA.
+      ENDIF.
+      PERFORM BAPI_DATA.
+  ENDCASE.
+  PERFORM REFRESH_DISPLAY_DATA.
+ENDMODULE. " USER_COMMAND_0100 INPUT
+*&---------------------------------------------------------------------*
+*&      Module  CREATE_AND_INIT_ALV  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE CREATE_AND_INIT_ALV OUTPUT.
+  IF G_DOCKING_CONTAINER IS INITIAL.
+
+    PERFORM CREAT_CON.
+    PERFORM EVENT_RECEIVER.
+*    PERFORM EXCLUDE_TB_FUNCTIONS.
+    PERFORM SET_VARIANT.
+    PERFORM SET_LAYOUT.
+    PERFORM SET_SORT.
+    PERFORM BULLD_FIELDCAT.
+*    PERFORM ALV_HEADER.
+    PERFORM DISPLAY_ALV_CONTAINER.
+  ENDIF.
+ENDMODULE. " CREATE_AND_INIT_ALV OUTPUT
+*&---------------------------------------------------------------------*
+*&      Form  EVENT_RECEIVER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM EVENT_RECEIVER .
+
+  CALL METHOD G_GRID->REGISTER_EDIT_EVENT
+    EXPORTING
+      I_EVENT_ID = CL_GUI_ALV_GRID=>MC_EVT_MODIFIED.
+
+  CREATE OBJECT EVENT_RECEIVER.
+  SET HANDLER EVENT_RECEIVER->HANDLE_DATA_CHANGED FOR G_GRID.
+  SET HANDLER EVENT_RECEIVER->HANDLE_TOOLBAR      FOR G_GRID.
+  SET HANDLER EVENT_RECEIVER->HANDLE_USER_COMMAND FOR G_GRID.
+  SET HANDLER EVENT_RECEIVER->HANDLE_DOUBLE_CLICK FOR G_GRID.
+  SET HANDLER EVENT_RECEIVER->HANDLE_TOP_OF_PAGE  FOR G_GRID.
+  CALL METHOD CL_GUI_CONTROL=>SET_FOCUS
+    EXPORTING
+      CONTROL = G_GRID.
+
+  IF GT_LIST[] IS NOT INITIAL.
+
+
+    CALL METHOD G_GRID2->REGISTER_EDIT_EVENT
+      EXPORTING
+        I_EVENT_ID = CL_GUI_ALV_GRID=>MC_EVT_MODIFIED.
+
+    SET HANDLER EVENT_RECEIVER->HANDLE_DATA_CHANGED FOR G_GRID2.
+    SET HANDLER EVENT_RECEIVER->HANDLE_TOOLBAR      FOR G_GRID2.
+    SET HANDLER EVENT_RECEIVER->HANDLE_USER_COMMAND FOR G_GRID2.
+    SET HANDLER EVENT_RECEIVER->HANDLE_DOUBLE_CLICK FOR G_GRID2.
+    CALL METHOD CL_GUI_CONTROL=>SET_FOCUS
+      EXPORTING
+        CONTROL = G_GRID2.
+  ENDIF.
+
+ENDFORM. " EVENT_RECEIVER
+*&---------------------------------------------------------------------*
+*&      Form  SET_VARIANT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM SET_VARIANT .
+  CLEAR: GS_VARIANT.
+  GS_VARIANT-REPORT     = SY-REPID.
+ENDFORM. " SET_VARIANT
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM SET_LAYOUT .
+  CLEAR: G_S_LAYOUT.
+
+  G_S_LAYOUT-CWIDTH_OPT  = 'X'.
+  G_S_LAYOUT-SEL_MODE    = 'D'.
+  G_S_LAYOUT-ZEBRA       = ' '.
+  G_S_LAYOUT-STYLEFNAME  = ' '.
+  G_S_LAYOUT-INFO_FNAME  = ' '.
+  G_S_LAYOUT-STYLEFNAME  = 'FIELD_STYLE'.
+ENDFORM. " SET_LAYOUT
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM SET_SORT .
+*                         NAME   UP DOWN SUBTOT  NO_OUT
+  PERFORM MAKE_SORT USING:'MATNR' 'X' ''   ''      ''.
+*  DOCKING ####
+  PERFORM MAKE_SORT2 USING:'VERSB' 'X' ''   ''      ''.
+  PERFORM MAKE_SORT2 USING:'PBDNR' 'X' ''   ''      ''.
+  PERFORM MAKE_SORT2 USING:'MATNR' 'X' ''   ''      ''.
+ENDFORM. " SET_SORT
+*&---------------------------------------------------------------------*
+*&      Form  MAKE_SORT
+*&---------------------------------------------------------------------*
+FORM MAKE_SORT USING P_FNAME
+                     P_UP
+                     P_DOWN
+                     P_SUBTOT
+                     P_NO_OUT.
+  ADD 1 TO  L_SPOS.
+
+  CLEAR LS_SORT.
+  LS_SORT-FIELDNAME = P_FNAME.
+  LS_SORT-SPOS      = L_SPOS.
+  LS_SORT-UP        = P_UP.
+  LS_SORT-DOWN      = P_DOWN.
+  LS_SORT-SUBTOT    = P_SUBTOT.
+  LS_SORT-NO_OUT    = P_NO_OUT.
+  APPEND LS_SORT   TO GT_SORT.
+
+
+ENDFORM. " MAKE_SORT
+*&---------------------------------------------------------------------*
+*&      Form  MAKE_SORT2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_FNAME    text
+*      -->P_UP       text
+*      -->P_DOWN     text
+*      -->P_SUBTOT   text
+*      -->P_NO_OUT   text
+*----------------------------------------------------------------------*
+FORM MAKE_SORT2 USING P_FNAME
+                     P_UP
+                     P_DOWN
+                     P_SUBTOT
+                     P_NO_OUT.
+  ADD 1 TO  L_SPOS.
+
+  CLEAR LS_SORT.
+  LS_SORT-FIELDNAME = P_FNAME.
+  LS_SORT-SPOS      = L_SPOS.
+  LS_SORT-UP        = P_UP.
+  LS_SORT-DOWN      = P_DOWN.
+  LS_SORT-SUBTOT    = P_SUBTOT.
+  LS_SORT-NO_OUT    = P_NO_OUT.
+  APPEND LS_SORT   TO GT_SORT2.
+
+
+ENDFORM. " MAKE_SORT
+*&---------------------------------------------------------------------*
+*&      Form  BULLD_FIELDCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BULLD_FIELDCAT .
+  DATA : FILED_NAME(40) TYPE C.
+  DATA : NUMBER(02).
+
+  CLEAR :NUMBER,FILED_NAME.
+  PERFORM APPEND_FIELDCAT TABLES   G_T_FIELDCAT
+                           USING:
+*  '01' 'G_BOX'        'X'  'X'   TEXT-017,
+  '01' 'X' 'G_ICON'       '06'  ' '   TEXT-018 ' ',
+  '01' 'X' 'VERSB'        '06'  ' '   TEXT-023 ' ',
+  '01' 'X' 'MATNR'        '18'  ' '   TEXT-020 ' ',
+  '01' 'X' 'MAKTX'        '40'  ' '   TEXT-021 ' ',
+  '01' 'X' 'MTART'        '20'  ' '   TEXT-032 ' ',
+  '01' 'X' 'MATKL'        '15'  ' '   TEXT-022 ' '.
+  IF P_RAD1 = 'X'.
+    LOOP AT Y_DATE.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'FILED' NUMBER INTO FILED_NAME.
+      PERFORM APPEND_FIELDCAT TABLES   G_T_FIELDCAT
+                               USING:
+          '01' ' ' FILED_NAME        '16'  ' '   Y_DATE-MONTH ' '.
+    ENDLOOP.
+  ELSEIF P_RAD2 = 'X'.
+
+    LOOP AT M_DAY.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'FILED' NUMBER INTO FILED_NAME.
+      PERFORM APPEND_FIELDCAT TABLES   G_T_FIELDCAT
+                               USING:
+          '01' ' ' FILED_NAME        '16'  ' '   M_DAY-WEEK ' '.
+    ENDLOOP.
+  ENDIF.
+
+  PERFORM APPEND_FIELDCAT TABLES   G_T_FIELDCAT
+                     USING:
+    '01' ' ' 'TOTAL'        '13'  ' '   TEXT-029 'C100',
+    '01' ' ' 'G_MESSAGE'    '50'  ' '   TEXT-024 'C100'.
+
+
+  PERFORM APPEND_FIELDCAT TABLES   G_T_FIELDCAT2
+                           USING:
+*  '01' 'G_BOX'        'X'  'X'   TEXT-017,
+  '01' 'X' 'G_ICON'       '06'  ' '   TEXT-018 ' ',
+  '01' 'X' 'VERSB'        '06'  ' '   TEXT-023 ' ',
+  '01' 'X' 'PBDNR'        '10'  ' '   'Requment Plan' ' ',
+  '01' 'X' 'MATNR'        '18'  ' '   TEXT-020 ' ',
+  '01' '' 'MAKTX'        '40'  ' '   TEXT-021 ' ',
+  '01' '' 'MTART'        '20'  ' '   TEXT-032 ' ',
+  '01' '' 'MATKL'        '15'  ' '   TEXT-022 ' '.
+
+ENDFORM. " BULLD_FIELDCAT
+*&---------------------------------------------------------------------*
+*&      Form  APPEND_FIELDCAT
+*&---------------------------------------------------------------------*
+FORM APPEND_FIELDCAT TABLES P_GT_FIELDCAT TYPE LVC_T_FCAT
+                      USING    P_COL_POS
+                               P_KEY
+                               P_FIELDNAME
+                               OUTPUTLEN
+                               P_CHECKBOX
+                               P_REPTEXT
+                               P_COLOR.
+
+  CLEAR: GS_FIELDCAT.
+  GS_FIELDCAT-COL_POS   = P_COL_POS.
+  GS_FIELDCAT-KEY       = P_KEY.
+  GS_FIELDCAT-FIELDNAME = P_FIELDNAME.
+  GS_FIELDCAT-TABNAME   = 'GT_TEMP'.
+  GS_FIELDCAT-OUTPUTLEN = OUTPUTLEN.
+  GS_FIELDCAT-CHECKBOX  = P_CHECKBOX.
+  GS_FIELDCAT-REPTEXT   = GS_FIELDCAT-SELTEXT = GS_FIELDCAT-COLTEXT
+                        = P_REPTEXT.
+  GS_FIELDCAT-EMPHASIZE = P_COLOR.
+  GS_FIELDCAT-QUANTITY   = 'EA'.
+  APPEND GS_FIELDCAT TO P_GT_FIELDCAT.
+
+ENDFORM. " APPEND_FIELDCAT
+
+*&---------------------------------------------------------------------*
+*&      Form  APPEND_FIELDCAT2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GT_FIELDCAT  text
+*      -->P_COL_POS      text
+*      -->P_KEY          text
+*      -->P_FIELDNAME    text
+*      -->OUTPUTLEN      text
+*      -->P_CHECKBOX     text
+*      -->P_REPTEXT      text
+*      -->P_COLOR        text
+*----------------------------------------------------------------------*
+FORM APPEND_FIELDCAT2 TABLES P_GT_FIELDCAT TYPE LVC_T_FCAT
+                      USING    P_COL_POS
+                               P_KEY
+                               P_FIELDNAME
+                               OUTPUTLEN
+                               P_CHECKBOX
+                               P_REPTEXT
+                               P_COLOR.
+
+  CLEAR: GS_FIELDCAT.
+  GS_FIELDCAT-COL_POS   = P_COL_POS.
+  GS_FIELDCAT-KEY       = P_KEY.
+  GS_FIELDCAT-FIELDNAME = P_FIELDNAME.
+  GS_FIELDCAT-TABNAME   = 'GT_OUT'.
+  GS_FIELDCAT-OUTPUTLEN = OUTPUTLEN.
+  GS_FIELDCAT-CHECKBOX  = P_CHECKBOX.
+  GS_FIELDCAT-REPTEXT   = GS_FIELDCAT-SELTEXT = GS_FIELDCAT-COLTEXT
+                        = P_REPTEXT.
+  GS_FIELDCAT-EMPHASIZE = P_COLOR.
+  GS_FIELDCAT-QUANTITY   = 'EA'.
+  APPEND GS_FIELDCAT TO P_GT_FIELDCAT.
+
+ENDFORM. " APPEND_FIELDCAT
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV_CONTAINER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM DISPLAY_ALV_CONTAINER .
+
+
+  CALL METHOD G_GRID->SET_TABLE_FOR_FIRST_DISPLAY
+    EXPORTING
+      IS_LAYOUT            = G_S_LAYOUT
+      IS_VARIANT           = GS_VARIANT
+      I_SAVE               = 'A'
+      IT_TOOLBAR_EXCLUDING = GT_TOOLBAR_EXCLUDING
+    CHANGING
+      IT_FIELDCATALOG      = G_T_FIELDCAT[]
+      IT_OUTTAB            = GT_ITAB[]
+      IT_SORT              = GT_SORT[].
+
+  IF DOCUMENT IS NOT INITIAL.
+
+    CALL METHOD DOCUMENT->INITIALIZE_DOCUMENT.
+    CALL METHOD G_GRID->LIST_PROCESSING_EVENTS
+      EXPORTING
+        I_EVENT_NAME = 'TOP_OF_PAGE'
+        I_DYNDOC_ID  = DOCUMENT.
+
+  ENDIF.
+
+  IF GT_LIST[] IS NOT INITIAL.
+    CALL METHOD G_GRID2->SET_TABLE_FOR_FIRST_DISPLAY
+      EXPORTING
+        IS_LAYOUT            = G_S_LAYOUT
+        IS_VARIANT           = GS_VARIANT
+        I_SAVE               = 'A'
+        IT_TOOLBAR_EXCLUDING = GT_TOOLBAR_EXCLUDING
+      CHANGING
+        IT_FIELDCATALOG      = G_T_FIELDCAT2[]
+        IT_OUTTAB            = GT_LIST[]
+        IT_SORT              = GT_SORT2[].
+  ENDIF.
+
+ENDFORM. " DISPLAY_ALV_CONTAINER
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_TOOLBAR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_OBJECT  text
+*      -->P_E_INTERACTIVE  text
+*----------------------------------------------------------------------*
+FORM HANDLE_TOOLBAR USING SENDER
+                 I_OBJECT TYPE REF TO CL_ALV_EVENT_TOOLBAR_SET
+                 P_E_INTERACTIVE TYPE CHAR1.
+
+  DATA: LS_TOOLBAR TYPE STB_BUTTON.
+
+  CASE SENDER.
+    WHEN G_GRID.
+      CLEAR LS_TOOLBAR.
+      LS_TOOLBAR-BUTN_TYPE = '0'.
+      LS_TOOLBAR-FUNCTION = 'CREATE'.
+      LS_TOOLBAR-ICON = '@15@'.
+      LS_TOOLBAR-QUICKINFO = 'PIR CREATE'.
+      LS_TOOLBAR-TEXT = 'PIR CREATE'.
+      APPEND LS_TOOLBAR TO I_OBJECT->MT_TOOLBAR.
+
+      CLEAR LS_TOOLBAR.
+      LS_TOOLBAR-BUTN_TYPE = '3'.
+      APPEND LS_TOOLBAR TO I_OBJECT->MT_TOOLBAR.
+    WHEN G_GRID2.
+      CLEAR LS_TOOLBAR.
+      LS_TOOLBAR-BUTN_TYPE = '0'.
+      LS_TOOLBAR-FUNCTION = 'DELETE'.
+      LS_TOOLBAR-ICON = '@15@'.
+      LS_TOOLBAR-QUICKINFO = 'PIR DEL'.
+      LS_TOOLBAR-TEXT = 'PIR DEL'.
+      APPEND LS_TOOLBAR TO I_OBJECT->MT_TOOLBAR.
+
+      CLEAR LS_TOOLBAR.
+      LS_TOOLBAR-BUTN_TYPE = '3'.
+      APPEND LS_TOOLBAR TO I_OBJECT->MT_TOOLBAR.
+  ENDCASE.
+
+
+
+*  CLEAR LS_TOOLBAR.
+*  MOVE 3 TO LS_TOOLBAR-BUTN_TYPE.
+*  APPEND LS_TOOLBAR TO I_OBJECT->MT_TOOLBAR.
+*  CLEAR LS_TOOLBAR.
+*
+*  MOVE 'REFRESH' TO LS_TOOLBAR-FUNCTION.
+*  MOVE ICON_REFRESH TO LS_TOOLBAR-ICON.
+*  INSERT LS_TOOLBAR INTO I_OBJECT->MT_TOOLBAR INDEX 1.
+*  CLEAR LS_TOOLBAR.
+
+*  MOVE 'S_ALL' TO LS_TOOLBAR-FUNCTION.                      "#EC NOTEXT
+*  MOVE ICON_SELECT_ALL TO LS_TOOLBAR-ICON.
+*  INSERT LS_TOOLBAR INTO I_OBJECT->MT_TOOLBAR INDEX 2.
+*  CLEAR LS_TOOLBAR.
+*
+*  MOVE 'D_ALL' TO LS_TOOLBAR-FUNCTION.                      "#EC NOTEXT
+*  MOVE ICON_DESELECT_ALL TO LS_TOOLBAR-ICON.
+*  INSERT LS_TOOLBAR INTO I_OBJECT->MT_TOOLBAR INDEX 3.
+*  CLEAR LS_TOOLBAR.
+
+ENDFORM. " HANDLE_TOOLBAR
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_DATA_CHANGED
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_ER_DATA_CHANGED  text
+*----------------------------------------------------------------------*
+FORM HANDLE_DATA_CHANGED USING SENDER IR_DATA_CHANGED
+                          TYPE REF TO CL_ALV_CHANGED_DATA_PROTOCOL.
+
+*  DATA: LS_MOD_CELL  TYPE LVC_S_MODI,
+*        LT_MOD_CELLS TYPE LVC_T_MODI,
+*        LV_VALUE     TYPE LVC_VALUE,
+*        LV_DATE_FROM TYPE LVC_VALUE,
+*        LV_LANDX     TYPE LANDX.
+*
+** Check date valid from and date valid to
+*  CLEAR: LT_MOD_CELLS, LS_MOD_CELL, LV_VALUE.
+*
+*  LT_MOD_CELLS = IR_DATA_CHANGED->MT_MOD_CELLS.
+*  SORT LT_MOD_CELLS BY ROW_ID.
+*
+*  LOOP AT LT_MOD_CELLS INTO LS_MOD_CELL.
+*    CASE LS_MOD_CELL-FIELDNAME.
+*      WHEN 'G_BOX'.
+*        READ TABLE GT_ITAB INDEX LS_MOD_CELL-ROW_ID.
+*        IF SY-SUBRC = 0.
+*          GT_ITAB-G_BOX = LS_MOD_CELL-VALUE.
+*          MODIFY GT_ITAB INDEX LS_MOD_CELL-ROW_ID.
+*          CLEAR GT_ITAB.
+*        ENDIF.
+*    ENDCASE.
+*    CLEAR: LS_MOD_CELL, LV_VALUE.
+*  ENDLOOP.
+
+ENDFORM. " HANDLE_DATA_CHANGED
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_USER_COMMAND
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_UCOMM  text
+*----------------------------------------------------------------------*
+FORM HANDLE_USER_COMMAND USING E_UCOMM.
+
+  DATA: LT_ROWS TYPE LVC_T_ROW.
+
+  CASE E_UCOMM.
+    WHEN 'CREATE'.
+      CALL METHOD G_GRID->GET_SELECTED_ROWS
+        IMPORTING
+          ET_INDEX_ROWS = LT_ROWS.
+      CALL METHOD CL_GUI_CFW=>FLUSH.
+
+      PERFORM CREATE_PRI TABLES LT_ROWS.
+      PERFORM REFRESH_DISPLAY_DATA.
+    WHEN 'DELETE' .
+      CALL METHOD G_GRID2->GET_SELECTED_ROWS
+        IMPORTING
+          ET_INDEX_ROWS = LT_ROWS.
+      CALL METHOD CL_GUI_CFW=>FLUSH.
+
+      PERFORM DELETE_PRI TABLES LT_ROWS.
+      PERFORM REFRESH_DISPLAY_DATA2.
+*    WHEN 'REFRESH'.
+*      PERFORM REFRESH_DISPLAY_DATA.
+  ENDCASE.
+
+
+ENDFORM. " HANDLE_USER_COMMAND
+*&---------------------------------------------------------------------*
+*&      Form  REFRESH_DISPLAY_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM REFRESH_DISPLAY_DATA .
+  CALL METHOD G_GRID->REFRESH_TABLE_DISPLAY.
+ENDFORM. " REFRESH_DISPLAY_DATA
+*&---------------------------------------------------------------------*
+*&      Form  CALL_TRANSACTIONS_MD63
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM CALL_TRANSACTIONS_MD63 .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+  PERFORM BDC_DYNPRO USING :
+        'X' 'SAPMM60X'      '0105',
+*        ' ' 'BDC_OKCODE'    '/00',
+        ' ' 'AM60X-MATAW'   'X',
+        ' ' 'AM60X-MATNR'   GS_ITAB-MATNR,
+        ' ' 'AM60X-PRGRP'   ' ',
+        ' ' 'AM60X-WERKS'   S_WERKS-LOW,
+        ' ' 'RM60X-BEDAE'   ' ',
+        ' ' 'AM60X-VERAW'   'X',
+        ' ' 'RM60X-VERSB'   GS_ITAB-VERSB,
+        ' ' 'RM60X-DATVE'   S_DATE,
+        ' ' 'RM60X-DATBE'   E_DATE.
+*
+*  PERFORM BDC_DYNPRO USING :
+*        'X' 'SAPLM60E'      '0200'.
+
+  CALL TRANSACTION 'MD63' USING BDC_TAB.
+ENDFORM. " CALL_TRANSACTIONS_MD63
+*&---------------------------------------------------------------------*
+*&      Form  BDC_DYNPRO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_2252   text
+*      -->P_2253   text
+*      -->P_2254   text
+*----------------------------------------------------------------------*
+FORM BDC_DYNPRO USING DYNBEGIN NAME VALUE.
+  IF DYNBEGIN = 'X'.
+    CLEAR BDC_TAB.
+    MOVE: NAME              TO  BDC_TAB-PROGRAM,
+          VALUE             TO  BDC_TAB-DYNPRO,
+          'X'               TO  BDC_TAB-DYNBEGIN.
+    APPEND  BDC_TAB.
+  ELSE.
+    CLEAR BDC_TAB.
+    MOVE: NAME              TO  BDC_TAB-FNAM,
+          VALUE             TO  BDC_TAB-FVAL.
+    APPEND  BDC_TAB.
+  ENDIF.
+ENDFORM. " BDC_DYNPRO
+*&---------------------------------------------------------------------*
+*&      Form  PRO_Y_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM PRO_Y_DATA .
+  LOOP AT GT_EXCEL.
+    GT_ITAB-VERSB   = GT_EXCEL-VERSB.
+    GT_ITAB-MATNR   = GT_EXCEL-MATNR.
+    GT_ITAB-MAKTX   = GT_EXCEL-MAKTX.
+    GT_ITAB-FILED1  = GT_EXCEL-M1.
+    GT_ITAB-FILED2  = GT_EXCEL-M2.
+    GT_ITAB-FILED3  = GT_EXCEL-M3.
+    GT_ITAB-FILED4  = GT_EXCEL-M4.
+    GT_ITAB-FILED5  = GT_EXCEL-M5.
+    GT_ITAB-FILED6  = GT_EXCEL-M6.
+    GT_ITAB-FILED7  = GT_EXCEL-M7.
+    GT_ITAB-FILED8  = GT_EXCEL-M8.
+    GT_ITAB-FILED9  = GT_EXCEL-M9.
+    GT_ITAB-FILED10 = GT_EXCEL-M10.
+    GT_ITAB-FILED11 = GT_EXCEL-M11.
+    GT_ITAB-FILED12 = GT_EXCEL-M12.
+    GT_ITAB-TOTAL   = GT_EXCEL-M1 + GT_EXCEL-M2 + GT_EXCEL-M3
+                    + GT_EXCEL-M4 + GT_EXCEL-M5 + GT_EXCEL-M6
+                    + GT_EXCEL-M7 + GT_EXCEL-M8 + GT_EXCEL-M9
+                    + GT_EXCEL-M10 + GT_EXCEL-M11 + GT_EXCEL-M12.
+
+    GT_ITAB-G_TYPE  = GT_EXCEL-G_TYPE.
+    GT_ITAB-G_MESSAGE = GT_EXCEL-G_MESSAGE.
+    APPEND GT_ITAB.
+  ENDLOOP.
+ENDFORM. " PRO_Y_DATA
+*&---------------------------------------------------------------------*
+*&      Form  PRO_M_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM PRO_M_DATA .
+  FIELD-SYMBOLS <L_FILED>.
+  DATA L_COL(40).
+  DATA SUM(13)    TYPE I.
+  DATA SUM1(13)   TYPE I.
+  DATA NUMBER(02) TYPE C.
+
+
+  LOOP AT GT_EXCEL.
+    GT_ITAB-VERSB   = GT_EXCEL-VERSB.
+    GT_ITAB-MATNR   = GT_EXCEL-MATNR.
+    GT_ITAB-MAKTX   = GT_EXCEL-MAKTX.
+
+    SORT GT_SUM BY DAY1.
+    READ TABLE GT_SUM INDEX 1.
+    DO GT_SUM-SUM TIMES.
+      CLEAR : SUM ,SUM1.
+      IF GT_EXCEL-M1 > 4.
+        SUM = GT_EXCEL-M1 / GT_SUM-SUM.
+      ENDIF.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'GT_ITAB-FILED' NUMBER INTO L_COL.
+      ASSIGN (L_COL) TO <L_FILED>.
+      MOVE    SUM    TO <L_FILED>.
+    ENDDO.
+    IF GT_EXCEL-M1 < 4.
+      MOVE GT_EXCEL-M1 TO <L_FILED>.
+    ENDIF.
+    SUM1 = ( SUM * GT_SUM-SUM ) - GT_EXCEL-M1.
+    IF SUM1 > 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ELSEIF SUM1 < 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ENDIF.
+
+
+    SORT GT_SUM BY DAY1.
+    READ TABLE GT_SUM INDEX 2.
+    DO GT_SUM-SUM TIMES.
+      CLEAR : SUM ,SUM1.
+      IF GT_EXCEL-M2 > 4.
+        SUM = GT_EXCEL-M2 / GT_SUM-SUM.
+      ENDIF.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'GT_ITAB-FILED' NUMBER INTO L_COL.
+      ASSIGN (L_COL) TO <L_FILED>.
+      MOVE    SUM    TO <L_FILED>.
+    ENDDO.
+    IF GT_EXCEL-M2 < 4.
+      MOVE GT_EXCEL-M2 TO <L_FILED>.
+    ENDIF.
+    SUM1 = ( SUM * GT_SUM-SUM ) - GT_EXCEL-M2.
+    IF SUM1 > 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ELSEIF SUM1 < 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ENDIF.
+
+    SORT GT_SUM BY DAY1.
+    READ TABLE GT_SUM INDEX 3.
+    DO GT_SUM-SUM TIMES.
+      CLEAR : SUM ,SUM1.
+      IF GT_EXCEL-M3 > 4.
+        SUM = GT_EXCEL-M3 / GT_SUM-SUM.
+      ENDIF.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'GT_ITAB-FILED' NUMBER INTO L_COL.
+      ASSIGN (L_COL) TO <L_FILED>.
+      MOVE    SUM    TO <L_FILED>.
+    ENDDO.
+    IF GT_EXCEL-M3 < 4.
+      MOVE GT_EXCEL-M3 TO <L_FILED>.
+    ENDIF.
+    SUM1 = ( SUM * GT_SUM-SUM ) - GT_EXCEL-M3.
+    IF SUM1 > 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ELSEIF SUM1 < 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ENDIF.
+
+    SORT GT_SUM BY DAY1.
+    READ TABLE GT_SUM INDEX 4.
+    CLEAR : SUM ,SUM1.
+    DO GT_SUM-SUM TIMES.
+      IF GT_EXCEL-M4 > 4.
+        SUM = GT_EXCEL-M4 / GT_SUM-SUM.
+      ENDIF.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'GT_ITAB-FILED' NUMBER INTO L_COL.
+      ASSIGN (L_COL) TO <L_FILED>.
+      MOVE    SUM    TO <L_FILED>.
+    ENDDO.
+    IF GT_EXCEL-M4 < 4.
+      MOVE GT_EXCEL-M4 TO <L_FILED>.
+    ENDIF.
+    SUM1 = ( SUM * GT_SUM-SUM ) - GT_EXCEL-M4.
+    IF SUM1 > 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ELSEIF SUM1 < 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ENDIF.
+
+    SORT GT_SUM BY DAY1.
+    READ TABLE GT_SUM INDEX 5.
+    CLEAR : SUM ,SUM1.
+    DO GT_SUM-SUM TIMES.
+      IF GT_EXCEL-M5 > 4.
+        SUM = GT_EXCEL-M5 / GT_SUM-SUM.
+      ENDIF.
+      NUMBER = NUMBER + 1.
+      CONCATENATE 'GT_ITAB-FILED' NUMBER INTO L_COL.
+      ASSIGN (L_COL) TO <L_FILED>.
+      MOVE    SUM    TO <L_FILED>.
+    ENDDO.
+    IF GT_EXCEL-M5 < 4.
+      MOVE GT_EXCEL-M5 TO <L_FILED>.
+    ENDIF.
+    SUM1 = ( SUM * GT_SUM-SUM ) - GT_EXCEL-M5.
+    IF SUM1 > 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ELSEIF SUM1 < 0.
+      SUM  = SUM - SUM1.
+      MOVE    SUM    TO <L_FILED>.
+    ENDIF.
+
+    GT_ITAB-TOTAL   = GT_EXCEL-M1 + GT_EXCEL-M2 + GT_EXCEL-M3
+                    + GT_EXCEL-M4 + GT_EXCEL-M5.
+    GT_ITAB-G_TYPE  = GT_EXCEL-G_TYPE.
+    GT_ITAB-G_MESSAGE = GT_EXCEL-G_MESSAGE.
+    APPEND GT_ITAB.
+    CLEAR  NUMBER.
+  ENDLOOP.
+ENDFORM. " PRO_M_DATA
+*&---------------------------------------------------------------------*
+*&      Form  GET_HEADER_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_HEADER_DATA .
+  DATA H_YEAR(04).
+  DATA H_MONTH1(07).
+  DATA HIGH(07).
+  DATA H_MONTHLY(06).
+  DATA H_MONTH(02).
+  P_NAMBER = P_PBDNR.
+  SELECT SINGLE NAME1 INTO G_NAME1
+  FROM T001W
+ WHERE WERKS = S_WERKS-LOW.
+
+  CONCATENATE S_WERKS-LOW '(' G_NAME1 ')' INTO NAME1.
+  IF P_RAD1 = 'X'.
+    TEXT1 = TEXT-025.
+    LOW1 = P_YEAR.
+    TEXT2 = TEXT-027.
+    CONCATENATE P_YEAR '01' '01' INTO S_DATE.
+    CONCATENATE P_YEAR '12' '31' INTO E_DATE.
+  ELSEIF P_RAD2 = 'X'.
+    TEXT1 = TEXT-026.
+    TEXT2 = TEXT-028.
+    CONCATENATE P_MONTH(04) '.' P_MONTH+04(02) INTO H_MONTH1.
+
+    H_MONTHLY = P_MONTH + 4.
+    CONCATENATE H_MONTHLY(04) '.' H_MONTHLY+04(02) INTO HIGH.
+    IF H_MONTHLY+04(02) > 12.
+      H_YEAR = P_MONTH(04) + 1.
+      H_MONTH =  H_MONTHLY+04(02) - 12.
+      IF H_MONTH < 10.
+        CONCATENATE H_YEAR '.' '0' H_MONTH INTO HIGH.
+      ELSE.
+        CONCATENATE H_YEAR '.' H_MONTH INTO HIGH.
+      ENDIF.
+    ENDIF.
+    CONCATENATE H_MONTH1 '~' HIGH INTO LOW1.
+    CONCATENATE P_MONTH '01' INTO S_DATE.
+    CONCATENATE HIGH(04)  HIGH+05(02)  '01'   INTO E_DATE.
+
+    CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+      EXPORTING
+        DAY_IN            = E_DATE
+      IMPORTING
+        LAST_DAY_OF_MONTH = E_DATE
+      EXCEPTIONS
+        DAY_IN_NO_DATE    = 1
+        OTHERS            = 2.
+  ENDIF.
+
+ENDFORM. " GET_HEADER_DATA
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM CHECK_DATA .
+  CLEAR GT_ITAB.
+  READ TABLE GT_ITAB WITH KEY G_TYPE = 'E'.
+  IF SY-SUBRC = 0.
+    MESSAGE E000 WITH 'Red icon can not processing'.
+  ENDIF.
+ENDFORM. " CHECK_DATA
+*&---------------------------------------------------------------------*
+*&      Form  BDC_MD74_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BDC_MD74_DATA .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+  PERFORM BDC_DYNPRO USING :
+        'X' 'RM60RR20'      '1000',
+        ' ' 'BDC_OKCODE'    '=ONLI',
+        ' ' 'WERKS-LOW'     S_WERKS-LOW,
+        ' ' 'WERKS-HIGH'    ' '.
+*  20121025 ## ### #### ##
+  PERFORM BDC_DYNPRO USING :
+        ' ' 'MATNR-LOW'     GT_ITAB-MATNR.
+*  IF P_RAD4 = 'X'.
+*    PERFORM BDC_DYNPRO USING :
+*    ' ' 'MATNR-LOW'     GT_ITAB-MATNR.
+*  ELSE.
+*    PERFORM BDC_DYNPRO USING :
+*    ' ' 'MATNR-LOW'     ' '.
+*  ENDIF.
+  PERFORM BDC_DYNPRO USING :
+       ' ' 'MATNR-HIGH'    ' ',
+       ' ' 'BEDAE-LOW'     ' ',
+       ' ' 'BEDAE-HIGH'    ' ',
+       ' ' 'PBDNR-LOW'     ' ',
+       ' ' 'PBDNR-HIGH'    'ZZZZZZZZZZ',
+       ' ' 'VERSB-LOW'     VERSB-LOW,
+       ' ' 'VERSB-HIGH'    VERSB-HIGH,
+       ' ' 'DATE1'         E_DATE,
+       ' ' 'HISTFLAG'      'X',
+       ' ' 'INACFLAG'      'X',
+       ' ' 'LISTFLAG'      'X',
+       ' ' 'TESTFLAG'      ' '.
+
+  PERFORM CALL_TRANSACTION  USING 'MD74'.
+ENDFORM. " BDC_MD74_DATA
+*&---------------------------------------------------------------------*
+*&      Form  CALL_TRANSACTION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_3688   text
+*----------------------------------------------------------------------*
+FORM CALL_TRANSACTION USING P_TCODE.
+
+  DATA : OPT TYPE CTU_PARAMS.
+  CLEAR OPT.
+  OPT-DEFSIZE  = 'X'.
+  OPT-RACOMMIT = 'X'.
+  OPT-UPDMODE  = 'S'.
+  OPT-DISMODE  = 'N'.
+
+  CALL TRANSACTION P_TCODE
+             USING BDC_TAB
+      OPTIONS FROM OPT
+     MESSAGES INTO GT_MESSAGE.
+  IF SY-SUBRC = 0.
+    COMMIT WORK.
+  ENDIF.
+ENDFORM. " CALL_TRANSACTION
+*&---------------------------------------------------------------------*
+*&      Form  BDC_MD75_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BDC_MD75_DATA .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+  PERFORM BDC_DYNPRO USING :
+        'X' 'RM60RR30'      '1000',
+        ' ' 'BDC_OKCODE'    '=ONLI',
+        ' ' 'WERKS-LOW'     S_WERKS-LOW,
+        ' ' 'WERKS-HIGH'    ' '.
+*  20121025 ## ### #### ##
+  PERFORM BDC_DYNPRO USING :
+        ' ' 'MATNR-LOW'     GT_ITAB-MATNR.
+*  IF P_RAD4 = 'X'.
+*    PERFORM BDC_DYNPRO USING :
+*    ' ' 'MATNR-LOW'     GT_ITAB-MATNR.
+*  ELSE.
+*    PERFORM BDC_DYNPRO USING :
+*    ' ' 'MATNR-LOW'     ' '.
+*  ENDIF.
+  PERFORM BDC_DYNPRO USING :
+      ' ' 'MATNR-HIGH'    ' ',
+      ' ' 'BEDAE-LOW'     ' ',
+      ' ' 'BEDAE-HIGH'    ' ',
+      ' ' 'PBDNR-LOW'     ' ',
+      ' ' 'PBDNR-HIGH'    'ZZZZZZZZZZ',
+      ' ' 'VERSB-LOW'     VERSB-LOW,
+      ' ' 'VERSB-HIGH'    VERSB-HIGH,
+      ' ' 'DATE1'         E_DATE,
+      ' ' 'LISTFLAG'      'X',
+      ' ' 'TESTFLAG'      ' ',
+      ' ' 'ENTMFLAG'      ' '.
+
+  PERFORM CALL_TRANSACTION  USING 'MD75'.
+ENDFORM. " BDC_MD75_DATA
+*&---------------------------------------------------------------------*
+*&      Form  BDC_MD76_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BDC_MD76_DATA .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+
+  PERFORM BDC_DYNPRO USING :
+        'X' 'RM60RR40'      '1000',
+        ' ' 'BDC_OKCODE'    '=ONLI',
+        ' ' 'WERKS-LOW'     S_WERKS-LOW,
+        ' ' 'WERKS-HIGH'    ' '.
+*  20121025 ## ### #### ##
+  PERFORM BDC_DYNPRO USING :
+        ' ' 'MATNR-LOW'     GT_ITAB-MATNR.
+*  IF P_RAD4 = 'X'.
+*    PERFORM BDC_DYNPRO USING :
+*    ' ' 'MATNR-LOW'     GT_ITAB-MATNR.
+*  ELSE.
+*    PERFORM BDC_DYNPRO USING :
+*    ' ' 'MATNR-LOW'     ' '.
+*  ENDIF.
+  PERFORM BDC_DYNPRO USING :
+      ' ' 'MATNR-HIGH'    ' ',
+      ' ' 'BEDAE-LOW'     ' ',
+      ' ' 'BEDAE-HIGH'    ' ',
+      ' ' 'PBDNR-LOW'     ' ',
+      ' ' 'PBDNR-HIGH'    'ZZZZZZZZZZ',
+      ' ' 'VERSB-LOW'     VERSB-LOW,
+      ' ' 'VERSB-HIGH'    VERSB-HIGH,
+      ' ' 'HDATE'         E_DATE,
+      ' ' 'LISTFLAG'      'X',
+      ' ' 'TESTFLAG'      ' '.
+
+  PERFORM CALL_TRANSACTION  USING 'MD76'.
+ENDFORM. " BDC_MD76_DATA
+*&---------------------------------------------------------------------*
+*&      Form  BAPI_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BAPI_DATA .
+  DATA : LS_BAPISITEMR  LIKE BAPISITEMR.
+  DATA : LT_BAPISSHDIN  LIKE BAPISSHDIN OCCURS 0 WITH HEADER LINE.
+  DATA : LT_BAPIRETURN1 LIKE BAPIRETURN1 OCCURS 0 WITH HEADER LINE.
+
+  DATA : L_LINE(2) TYPE C.
+  DATA : L_TABNAME(30).
+  DATA : L_QYT LIKE BAPISSHDIN-REQ_QTY.
+
+
+  FIELD-SYMBOLS: <FS>.
+  LOOP AT GT_ITAB.
+    CLEAR : LT_BAPIRETURN1,  LT_BAPIRETURN1[],
+            LT_BAPISSHDIN,   LT_BAPISSHDIN[],
+            LS_BAPISITEMR.
+
+
+
+    LS_BAPISITEMR-MATERIAL   = GT_ITAB-MATNR.
+    LS_BAPISITEMR-PLANT      = S_WERKS-LOW.
+    LS_BAPISITEMR-VERSION    = GT_ITAB-VERSB.
+    LS_BAPISITEMR-REQ_NUMBER = P_PBDNR.
+    LS_BAPISITEMR-VERS_ACTIV = ' '.
+
+    CLEAR L_LINE.
+    IF P_RAD1 = 'X'.
+      LOOP AT Y_DATE.
+        L_LINE = L_LINE + 1.
+        CLEAR L_TABNAME.
+        CONCATENATE 'GT_ITAB-FILED' L_LINE INTO L_TABNAME.
+        ASSIGN (L_TABNAME) TO <FS>.
+        IF <FS> <> '' AND
+           <FS> <> 0.
+          CLEAR L_QYT.
+          L_QYT = <FS>.
+          LT_BAPISSHDIN-DATE_TYPE = '3'.
+          LT_BAPISSHDIN-REQ_DATE  = Y_DATE-DAY.
+          LT_BAPISSHDIN-REQ_QTY   = L_QYT.
+          APPEND LT_BAPISSHDIN.
+        ENDIF.
+      ENDLOOP.
+    ELSEIF P_RAD2 = 'X'.
+      LOOP AT M_DAY.
+        L_LINE = L_LINE + 1.
+        CLEAR L_TABNAME.
+        CONCATENATE 'GT_ITAB-FILED' L_LINE INTO L_TABNAME.
+        ASSIGN (L_TABNAME) TO <FS>.
+        IF <FS> <> '' AND
+           <FS> <> 0.
+          CLEAR L_QYT.
+          L_QYT = <FS>.
+          LT_BAPISSHDIN-DATE_TYPE = '2'.
+          LT_BAPISSHDIN-REQ_DATE  = M_DAY-DAY.
+          LT_BAPISSHDIN-REQ_QTY   = L_QYT.
+          APPEND LT_BAPISSHDIN.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
+    CALL FUNCTION 'BAPI_REQUIREMENTS_CREATE'
+      EXPORTING
+        REQUIREMENTS_ITEM        = LS_BAPISITEMR
+*       DO_COMMIT                = 'X'
+*       UPDATE_MODE              = 'X'
+*       REFER_TYPE               = ' '
+*       PROFILID                 = ' '
+      TABLES
+        REQUIREMENTS_SCHEDULE_IN = LT_BAPISSHDIN
+        RETURN                   = LT_BAPIRETURN1.
+
+    IF LT_BAPIRETURN1[] IS INITIAL.
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+        EXPORTING
+          WAIT = 'X'.
+      GS4 = GS4 + 1.
+      GT_ITAB-BDC_TYPE = 'S'.
+      GT_ITAB-G_ICON = ICON_CHECKED.
+*      GT_ITAB-G_BOX  = ' '.
+    ELSE.
+      READ TABLE LT_BAPIRETURN1 INDEX 1.
+      IF LT_BAPIRETURN1-TYPE <> 'E'.
+        CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+          EXPORTING
+            WAIT = 'X'.
+        GS4 = GS4 + 1.
+        GT_ITAB-BDC_TYPE = 'S'.
+        GT_ITAB-G_ICON = ICON_CHECKED.
+*        GT_ITAB-G_BOX  = ' '.
+      ELSE.
+        CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+        GS5 = GS5 + 1.
+        GT_ITAB-BDC_TYPE = 'E'.
+        GT_ITAB-G_ICON = ICON_INCOMPLETE.
+      ENDIF.
+      GT_ITAB-G_TYPE    = LT_BAPIRETURN1-TYPE.
+      GT_ITAB-G_MESSAGE = LT_BAPIRETURN1-MESSAGE.
+    ENDIF.
+    MODIFY GT_ITAB.
+    CLEAR  GT_ITAB.
+  ENDLOOP.
+ENDFORM. " BAPI_DATA
+*&---------------------------------------------------------------------*
+*&      Form  YEAR_DATE_2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM YEAR_DATE_2 .
+  DATA D_NUMBER(02).
+  DATA D_DAYNR LIKE HRVSCHED-DAYNR.
+
+  DO 12 TIMES.
+    D_NUMBER = D_NUMBER + 1.
+    IF D_NUMBER < 10.
+      CONCATENATE '0' D_NUMBER INTO D_NUMBER.
+    ENDIF.
+    CONCATENATE P_YEAR '.' D_NUMBER INTO Y_DATE-MONTH.
+    APPEND Y_DATE.
+  ENDDO.
+
+  LOOP AT Y_DATE.
+    CONCATENATE Y_DATE-MONTH(04) Y_DATE-MONTH+05(02)
+                '01' INTO Y_DATE-DAY.
+    MODIFY Y_DATE.
+  ENDLOOP.
+ENDFORM. " YEAR_DATE_2
+*&---------------------------------------------------------------------*
+*&      Form  MONTH_DATE_2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM MONTH_DATE_2 .
+  DATA M_YEAR  LIKE P_YEAR.
+  DATA M_MONTH LIKE P_MONTH.
+  DATA N_MONTH(02) TYPE C.
+  DATA D_DAY  LIKE SY-DATUM.
+  DATA M_MONTH1 LIKE M_MONTH.
+  DATA WEEK_NUMBER(02) TYPE C.
+
+  DATA : L_WEEK LIKE SCAL-WEEK.
+
+
+  CONCATENATE P_MONTH '01' INTO M_DATE-M_LOW .
+  APPEND M_DATE.
+
+  DO 4 TIMES.
+    SORT M_DATE DESCENDING BY M_LOW.
+    READ TABLE M_DATE INDEX 1.
+    IF M_DATE-M_LOW+04(02) = 12.
+      M_YEAR = P_MONTH(04) + 01.
+      CONCATENATE M_YEAR '01' '01' INTO M_DATE-M_LOW.
+      APPEND M_DATE.
+    ELSE.
+      CLEAR M_MONTH.
+      N_MONTH = M_DATE-M_LOW+04(02) + 1.
+      IF N_MONTH < 10.
+        CONCATENATE '0' N_MONTH INTO N_MONTH.
+      ENDIF.
+      CONCATENATE M_DATE-M_LOW(04) N_MONTH INTO M_MONTH.
+      CONCATENATE M_MONTH '01' INTO M_DATE-M_LOW.
+      APPEND M_DATE.
+    ENDIF.
+  ENDDO.
+
+  SORT M_DATE BY M_LOW.
+  LOOP AT M_DATE.
+    CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+      EXPORTING
+        DAY_IN            = M_DATE-M_LOW
+      IMPORTING
+        LAST_DAY_OF_MONTH = M_DATE-M_HIGH
+      EXCEPTIONS
+        DAY_IN_NO_DATE    = 1
+        OTHERS            = 2.
+    MODIFY M_DATE.
+
+    CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+      EXPORTING
+        I_DATE_FROM    = M_DATE-M_LOW
+        I_KEY_DAY_FROM = '00'
+        I_DATE_TO      = M_DATE-M_HIGH
+        I_KEY_DAY_TO   = '00'
+        I_FLG_SEPARATE = ''
+      IMPORTING
+        E_DAYS         = M_DATE-SUM.
+    CLEAR D_DAY.
+
+    D_DAY = M_DATE-M_LOW.
+
+    CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+      EXPORTING
+        LANGU = SY-LANGU
+        DATE  = D_DAY
+      IMPORTING
+        DAYNR = M_DAY-DAYNR.
+
+    IF M_DAY-DAYNR = 6.
+      M_DAY-TYPE = 'X'.
+      M_DAY-DAY  = D_DAY.
+      M_DAY-WEEK = '-W1'.
+      WEEK_NUMBER = 1.
+      M_DAY-DAY1 = M_DAY-DAY(06).
+      CONCATENATE M_DAY-DAY(04) '.' M_DAY-DAY+04(02)
+            M_DAY-WEEK INTO M_DAY-WEEK.
+      APPEND M_DAY.
+    ENDIF.
+
+
+    DO  M_DATE-SUM TIMES.
+
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL_ZA'
+        EXPORTING
+          DATE      = D_DAY
+          DAYS      = '1'
+          MONTHS    = '00'
+          SIGNUM    = '+'
+          YEARS     = '00'
+        IMPORTING
+          CALC_DATE = D_DAY.
+
+      M_DAY-DAY = D_DAY.
+
+      CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+        EXPORTING
+          LANGU = SY-LANGU
+          DATE  = M_DAY-DAY
+        IMPORTING
+          DAYNR = M_DAY-DAYNR.
+
+      IF M_DAY-DAYNR = 6.
+        M_DAY-TYPE = 'X'.
+        IF M_MONTH1 <> M_DAY-DAY(06).
+          IF WEEK_NUMBER IS NOT INITIAL.
+            M_DAY-TYPE = 'X'.
+            WEEK_NUMBER = WEEK_NUMBER + 1.
+            CONCATENATE '-W' WEEK_NUMBER INTO M_DAY-WEEK.
+          ELSE.
+            M_MONTH1 = M_DAY-DAY.
+            M_DAY-WEEK = '-W1'.
+            WEEK_NUMBER = 1.
+          ENDIF.
+        ELSEIF M_MONTH1 = M_DAY-DAY(06).
+          WEEK_NUMBER = WEEK_NUMBER + 1.
+          CONCATENATE '-W' WEEK_NUMBER INTO M_DAY-WEEK.
+        ENDIF.
+        M_DAY-DAY1 = M_DAY-DAY(06).
+        M_DAY-SUM = 1.
+        CONCATENATE M_DAY-DAY(04) '.' M_DAY-DAY+04(02)
+                    M_DAY-WEEK INTO M_DAY-WEEK.
+        IF WEEK_NUMBER <> 1.
+          CLEAR L_WEEK.
+          CALL FUNCTION 'DATE_GET_WEEK'
+            EXPORTING
+              DATE         = M_DAY-DAY
+            IMPORTING
+              WEEK         = L_WEEK
+            EXCEPTIONS
+              DATE_INVALID = 1
+              OTHERS       = 2.
+
+          CALL FUNCTION 'WEEK_GET_FIRST_DAY'
+            EXPORTING
+              WEEK         = L_WEEK
+            IMPORTING
+              DATE         = M_DAY-DAY
+            EXCEPTIONS
+              WEEK_INVALID = 1
+              OTHERS       = 2.
+
+          CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+            EXPORTING
+              LANGU = SY-LANGU
+              DATE  = M_DAY-DAY
+            IMPORTING
+              DAYNR = M_DAY-DAYNR.
+        ENDIF.
+
+        APPEND M_DAY.
+      ENDIF.
+
+      IF M_DAY-DAY = M_DATE-M_HIGH.
+        IF M_DAY-DAYNR < 6.
+          M_DAY-TYPE = 'X'.
+          IF M_MONTH1 <> M_DAY-DAY(06).
+            M_MONTH1 = M_DAY-DAY.
+            M_DAY-WEEK = '-W1'.
+            WEEK_NUMBER = 1.
+          ELSEIF M_MONTH1 = M_DAY-DAY(06).
+            WEEK_NUMBER = WEEK_NUMBER + 1.
+            CONCATENATE '-W' WEEK_NUMBER INTO M_DAY-WEEK.
+          ENDIF.
+          M_DAY-DAY1 = M_DAY-DAY(06).
+          M_DAY-SUM = 1.
+          CONCATENATE M_DAY-DAY(04) '.' M_DAY-DAY+04(02)
+                      M_DAY-WEEK INTO M_DAY-WEEK.
+
+          IF WEEK_NUMBER <> 1.
+            CLEAR L_WEEK.
+
+            CALL FUNCTION 'DATE_GET_WEEK'
+              EXPORTING
+                DATE         = M_DAY-DAY
+              IMPORTING
+                WEEK         = L_WEEK
+              EXCEPTIONS
+                DATE_INVALID = 1
+                OTHERS       = 2.
+
+            CALL FUNCTION 'WEEK_GET_FIRST_DAY'
+              EXPORTING
+                WEEK         = L_WEEK
+              IMPORTING
+                DATE         = M_DAY-DAY
+              EXCEPTIONS
+                WEEK_INVALID = 1
+                OTHERS       = 2.
+
+            CALL FUNCTION 'RH_GET_DATE_DAYNAME'
+              EXPORTING
+                LANGU = SY-LANGU
+                DATE  = M_DAY-DAY
+              IMPORTING
+                DAYNR = M_DAY-DAYNR.
+          ENDIF.
+
+          APPEND M_DAY.
+        ENDIF.
+      ENDIF.
+    ENDDO.
+    CLEAR WEEK_NUMBER.
+  ENDLOOP.
+
+  LOOP AT M_DAY.
+    MOVE-CORRESPONDING M_DAY TO GT_SUM.
+    COLLECT GT_SUM.
+    CLEAR   GT_SUM.
+  ENDLOOP.
+  SORT GT_SUM BY DAY1.
+ENDFORM. " MONTH_DATE_2
+*&---------------------------------------------------------------------*
+*&      Form  GET_PBIM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GET_PBIM .
+  DATA : L_MTART LIKE MARA-MTART.
+  DATA : L_DATUM LIKE SY-DATUM.
+*  ### ##
+  CASE 'X'.
+    WHEN P_RAD3.
+      %%RANGE_SET GR_MTART 'FERT' ''.
+      %%RANGE_SET GR_MTART 'FERM' ''.
+    WHEN P_RAD4.
+      %%RANGE_SET GR_MTART 'HALB' ''.
+  ENDCASE.
+*  ## ## ##
+  CASE 'X'.
+    WHEN P_RAD1.
+      MOVE: 'I'    TO GR_VERSB-SIGN,
+          'CP'   TO GR_VERSB-OPTION,
+          'Y*'     TO GR_VERSB-LOW.
+      APPEND GR_VERSB    TO GR_VERSB.
+
+      MOVE: 'I'    TO GR_PDATU-SIGN,
+            'BT'   TO GR_PDATU-OPTION.
+      CONCATENATE P_YEAR '01' '01' INTO GR_PDATU-LOW.
+      CONCATENATE P_YEAR '12' '31' INTO GR_PDATU-HIGH.
+      APPEND GR_PDATU    TO GR_PDATU.
+
+    WHEN P_RAD2.
+      MOVE: 'I'    TO GR_VERSB-SIGN,
+          'CP'   TO GR_VERSB-OPTION,
+          'M*'     TO GR_VERSB-LOW.
+      APPEND GR_VERSB    TO GR_VERSB.
+
+      CONCATENATE P_MONTH '01' INTO L_DATUM.
+
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+        EXPORTING
+          DATE      = L_DATUM
+          DAYS      = 0
+          MONTHS    = 4
+          SIGNUM    = '+'
+          YEARS     = 0
+        IMPORTING
+          CALC_DATE = L_DATUM.
+
+      MOVE: 'I'    TO GR_PDATU-SIGN,
+          'LE'   TO GR_PDATU-OPTION,
+          L_DATUM TO GR_PDATU-LOW.
+*      CONCATENATE L_DATUM(6) '%' INTO GR_PDATU-LOW.
+      APPEND GR_PDATU    TO GR_PDATU.
+
+  ENDCASE.
+
+  SELECT A~WERKS A~VERSB A~PBDNR A~MATNR C~MAKTX B~MTART B~MATKL
+         D~PDATU
+    INTO CORRESPONDING FIELDS OF TABLE GT_LIST
+    FROM PBIM AS A INNER JOIN MARA AS B ON A~MATNR = B~MATNR
+    INNER JOIN MAKT AS C ON A~MATNR = C~MATNR
+    INNER JOIN PBED AS D ON A~BDZEI = D~BDZEI
+   WHERE A~WERKS IN S_WERKS
+     AND B~MTART IN GR_MTART
+     AND A~VERSB IN GR_VERSB
+     AND D~PDATU IN GR_PDATU
+     AND C~SPRAS = SY-LANGU.
+
+  SORT GT_LIST BY VERSB MATNR.
+
+  LOOP AT GT_ITAB.
+    DELETE GT_LIST WHERE VERSB = GT_ITAB-VERSB
+                     AND MATNR = GT_ITAB-MATNR.
+  ENDLOOP.
+
+  SORT GT_LIST.
+  DELETE ADJACENT DUPLICATES FROM GT_LIST COMPARING ALL FIELDS.
+
+ENDFORM. " GET_PBIM
+*&---------------------------------------------------------------------*
+*&      Form  CREAT_CON
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM CREAT_CON .
+*  IF G_DOCKING_CONTAINER IS INITIAL.
+  CREATE OBJECT G_DOCKING_CONTAINER
+    EXPORTING
+      REPID     = SY-REPID
+      DYNNR     = SY-DYNNR
+      SIDE      = G_DOCKING_CONTAINER->DOCK_AT_TOP
+      EXTENSION = 200.
+
+  CREATE OBJECT DOCUMENT
+    EXPORTING
+      STYLE = 'ALV_GRID'.
+
+  CREATE OBJECT SPLITTER
+    EXPORTING
+      PARENT  = G_DOCKING_CONTAINER
+      COLUMNS = 1
+      ROWS    = 2.
+
+  CALL METHOD SPLITTER->GET_CONTAINER
+    EXPORTING
+      ROW       = 1
+      COLUMN    = 1
+    RECEIVING
+      CONTAINER = PARENT1.
+
+  CALL METHOD SPLITTER->GET_CONTAINER
+    EXPORTING
+      ROW       = 2
+      COLUMN    = 1
+    RECEIVING
+      CONTAINER = PARENT2.
+
+  CALL METHOD SPLITTER->SET_ROW_HEIGHT
+    EXPORTING
+      ID     = 1
+      HEIGHT = 25.
+
+  CREATE OBJECT G_GRID
+    EXPORTING
+      I_PARENT = PARENT2.
+*  ENDIF.
+
+*  CREATE OBJECT G_GRID
+*    EXPORTING
+*      I_PARENT = G_DOCKING_CONTAINER.
+
+  IF GT_LIST[] IS NOT INITIAL.
+    CREATE OBJECT G_DOCKING_CONTAINER2
+      EXPORTING
+        REPID     = SY-REPID
+        DYNNR     = SY-DYNNR
+        SIDE      = G_DOCKING_CONTAINER->DOCK_AT_BOTTOM
+        EXTENSION = 100.
+
+    CREATE OBJECT G_GRID2
+      EXPORTING
+        I_PARENT = G_DOCKING_CONTAINER2.
+  ENDIF.
+ENDFORM. " CREAT_CON
+*&---------------------------------------------------------------------*
+*&      Form  ALV_HEADER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM ALV_HEADER .
+  DATA : L_TEXT(255) TYPE C.
+
+  CLEAR L_TEXT.
+  CASE 'X'.
+    WHEN P_RAD3.
+      CONCATENATE 'YEARLY' ':' P_YEAR INTO L_TEXT SEPARATED BY SPACE.
+    WHEN P_RAD4.
+      CONCATENATE 'MONTHLY' ':' P_MONTH INTO L_TEXT SEPARATED BY SPACE.
+  ENDCASE.
+
+  CALL METHOD DOCUMENT->ADD_GAP.
+  CALL METHOD DOCUMENT->ADD_TEXT
+    EXPORTING
+      SAP_FONTSIZE = CL_DD_DOCUMENT=>SMALL
+      SAP_EMPHASIS = CL_DD_DOCUMENT=>STRONG
+      TEXT         = L_TEXT.
+
+  CALL METHOD DOCUMENT->NEW_LINE.
+
+  CLEAR L_TEXT.
+  CONCATENATE 'Reqment Plan : ' P_PBDNR INTO L_TEXT.
+  CALL METHOD DOCUMENT->ADD_GAP.
+  CALL METHOD DOCUMENT->ADD_TEXT
+    EXPORTING
+      SAP_FONTSIZE = CL_DD_DOCUMENT=>SMALL
+      SAP_EMPHASIS = CL_DD_DOCUMENT=>STRONG
+      TEXT         = L_TEXT.
+
+  CALL METHOD DOCUMENT->NEW_LINE.
+
+  DATA : L_LINES(5) TYPE C.
+  CLEAR L_LINES.
+  L_LINES = G_LINES.
+
+  CLEAR L_TEXT.
+  CONCATENATE 'Excel Upload Success : ' L_LINES INTO L_TEXT.
+  CALL METHOD DOCUMENT->ADD_GAP.
+  CALL METHOD DOCUMENT->ADD_TEXT
+    EXPORTING
+      SAP_FONTSIZE = CL_DD_DOCUMENT=>SMALL
+      SAP_EMPHASIS = CL_DD_DOCUMENT=>STRONG
+      TEXT         = L_TEXT.
+
+  CALL METHOD DOCUMENT->NEW_LINE.
+
+*  G_LINES = G_LINES - G_COUNT.
+
+  CLEAR L_LINES.
+  L_LINES = G_COUNT.
+
+  CLEAR L_TEXT.
+  CONCATENATE 'Excel Upload Error : ' L_LINES INTO L_TEXT.
+  CALL METHOD DOCUMENT->ADD_GAP.
+  CALL METHOD DOCUMENT->ADD_TEXT
+    EXPORTING
+      SAP_FONTSIZE = CL_DD_DOCUMENT=>SMALL
+      SAP_EMPHASIS = CL_DD_DOCUMENT=>STRONG
+      TEXT         = L_TEXT.
+
+  CALL METHOD DOCUMENT->NEW_LINE.
+
+
+  IF HTML_CONTROL IS INITIAL.
+    CREATE OBJECT HTML_CONTROL
+      EXPORTING
+        PARENT = PARENT1.
+  ENDIF.
+
+  CALL METHOD DOCUMENT->MERGE_DOCUMENT.
+  DOCUMENT->HTML_CONTROL = HTML_CONTROL.
+
+  CALL METHOD DOCUMENT->DISPLAY_DOCUMENT
+    EXPORTING
+      REUSE_CONTROL      = 'X'
+      PARENT             = PARENT1
+    EXCEPTIONS
+      HTML_DISPLAY_ERROR = 1.
+  IF SY-SUBRC <> 0.
+    MESSAGE S000 WITH 'ERROR TOP OF PAGE'.
+  ENDIF.
+
+ENDFORM. " ALV_HEADER
+*&---------------------------------------------------------------------*
+*&      Form  REFRESH_DISPLAY_DATA2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM REFRESH_DISPLAY_DATA2 .
+  CALL METHOD G_GRID2->REFRESH_TABLE_DISPLAY.
+ENDFORM. " REFRESH_DISPLAY_DATA2
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_PRI
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM CREATE_PRI TABLES P_LT_ROWS TYPE LVC_T_ROW.
+  DATA : IDX LIKE SY-TABIX.
+  LOOP AT P_LT_ROWS.
+*LOOP AT GT_ITAB.
+*  CLEAR IDX.
+*  IDX = SY-TABIX.
+    GS6 = GS1.
+    READ TABLE GT_ITAB INDEX P_LT_ROWS-INDEX.
+    CHECK SY-SUBRC = 0.
+    CLEAR : VERSB-LOW,VERSB-HIGH.
+    IF GT_ITAB-BDC_TYPE <> 'S'.
+      IF P_RAD1 = 'X'.
+        VERSB-LOW = 'Y1'.
+        VERSB-HIGH = 'Y6'.
+      ELSEIF P_RAD2 = 'X'.
+        VERSB-LOW = 'M1'.
+        VERSB-HIGH = 'M6'.
+      ENDIF.
+      PERFORM BDC_MD74_DATA.
+      PERFORM BDC_MD75_DATA.
+      PERFORM BDC_MD76_DATA.
+    ENDIF.
+*    PERFORM BAPI_DATA.
+    PERFORM BAPI_DATA2 USING P_LT_ROWS-INDEX.
+  ENDLOOP.
+ENDFORM. " CREATE_PRI
+*&---------------------------------------------------------------------*
+*&      Form  DELETE_PRI
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_ROWS  text
+*----------------------------------------------------------------------*
+FORM DELETE_PRI TABLES P_LT_ROWS TYPE LVC_T_ROW.
+
+  LOOP AT P_LT_ROWS.
+    CLEAR GT_LIST.
+    READ TABLE GT_LIST INDEX P_LT_ROWS-INDEX.
+    CHECK SY-SUBRC = 0.
+    PERFORM BDC_MD74_DATA2.
+    PERFORM BDC_MD75_DATA2.
+    PERFORM BDC_MD76_DATA2.
+    MODIFY GT_LIST INDEX P_LT_ROWS-INDEX.
+  ENDLOOP.
+
+ENDFORM. " DELETE_PRI
+*&---------------------------------------------------------------------*
+*&      Form  BDC_MD74_DATA2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BDC_MD74_DATA2 .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+
+  DATA :L_DATUM LIKE SY-DATUM.
+  CLEAR L_DATUM.
+
+  CASE 'X'.
+    WHEN P_RAD3."YEAR
+      CONCATENATE P_YEAR '1231' INTO L_DATUM.
+    WHEN P_RAD4."MONTH
+*      ### + 5
+      CONCATENATE P_MONTH '01' INTO L_DATUM.
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+        EXPORTING
+          DATE      = L_DATUM
+          DAYS      = 0
+          MONTHS    = 4
+          SIGNUM    = '+'
+          YEARS     = 0
+        IMPORTING
+          CALC_DATE = L_DATUM.
+*### +5 ## ### ##
+      CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+        EXPORTING
+          DAY_IN            = L_DATUM
+        IMPORTING
+          LAST_DAY_OF_MONTH = L_DATUM
+        EXCEPTIONS
+          DAY_IN_NO_DATE    = 1
+          OTHERS            = 2.
+  ENDCASE.
+
+  PERFORM BDC_DYNPRO USING :
+       'X' 'RM60RR20'      '1000',
+       ' ' 'BDC_OKCODE'    '=ONLI',
+       ' ' 'WERKS-LOW'     S_WERKS-LOW,
+       ' ' 'WERKS-HIGH'    ' ',
+       ' ' 'MATNR-LOW'     GT_LIST-MATNR,
+       ' ' 'MATNR-HIGH'    ' ',
+       ' ' 'BEDAE-LOW'     ' ',
+       ' ' 'BEDAE-HIGH'    ' ',
+       ' ' 'PBDNR-LOW'     GT_LIST-PBDNR,
+       ' ' 'PBDNR-HIGH'    ' ',
+       ' ' 'VERSB-LOW'     GT_LIST-VERSB,
+       ' ' 'VERSB-HIGH'    ' ',
+       ' ' 'DATE1'         L_DATUM,
+       ' ' 'HISTFLAG'      'X',
+       ' ' 'INACFLAG'      'X',
+       ' ' 'LISTFLAG'      'X',
+       ' ' 'TESTFLAG'      ' '.
+
+  PERFORM CALL_TRANSACTION  USING 'MD74'.
+
+  READ TABLE GT_MESSAGE INDEX 1.
+  IF GT_MESSAGE-MSGTYP = 'E'.
+    GT_LIST-G_ICON = ICON_LED_RED.
+    GT_LIST-MESSAGE = GT_MESSAGE-MSGV1.
+  ELSE.
+    GT_LIST-G_ICON = ICON_LED_GREEN.
+  ENDIF.
+
+ENDFORM. " BDC_MD74_DATA2
+*&---------------------------------------------------------------------*
+*&      Form  BDC_MD75_DATA2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BDC_MD75_DATA2 .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+
+  DATA :L_DATUM LIKE SY-DATUM.
+  CLEAR L_DATUM.
+
+  CASE 'X'.
+    WHEN P_RAD3."YEAR
+      CONCATENATE P_YEAR '1231' INTO L_DATUM.
+    WHEN P_RAD4."MONTH
+*      ### + 5
+      CONCATENATE P_MONTH '01' INTO L_DATUM.
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+        EXPORTING
+          DATE      = L_DATUM
+          DAYS      = 0
+          MONTHS    = 4
+          SIGNUM    = '+'
+          YEARS     = 0
+        IMPORTING
+          CALC_DATE = L_DATUM.
+*### +5 ## ### ##
+      CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+        EXPORTING
+          DAY_IN            = L_DATUM
+        IMPORTING
+          LAST_DAY_OF_MONTH = L_DATUM
+        EXCEPTIONS
+          DAY_IN_NO_DATE    = 1
+          OTHERS            = 2.
+  ENDCASE.
+
+  PERFORM BDC_DYNPRO USING :
+        'X' 'RM60RR30'      '1000',
+        ' ' 'BDC_OKCODE'    '=ONLI',
+        ' ' 'WERKS-LOW'     S_WERKS-LOW,
+        ' ' 'WERKS-HIGH'    ' ',
+        ' ' 'MATNR-LOW'     GT_LIST-MATNR,
+        ' ' 'MATNR-HIGH'    ' ',
+        ' ' 'BEDAE-LOW'     ' ',
+        ' ' 'BEDAE-HIGH'    ' ',
+        ' ' 'PBDNR-LOW'     GT_LIST-PBDNR,
+        ' ' 'PBDNR-HIGH'    ' ',
+        ' ' 'VERSB-LOW'     GT_LIST-VERSB,
+        ' ' 'VERSB-HIGH'    GT_LIST-VERSB,
+        ' ' 'DATE1'         L_DATUM,
+        ' ' 'LISTFLAG'      'X',
+        ' ' 'TESTFLAG'      ' ',
+        ' ' 'ENTMFLAG'      ' '.
+
+  PERFORM CALL_TRANSACTION  USING 'MD75'.
+
+  READ TABLE GT_MESSAGE INDEX 1.
+  IF GT_MESSAGE-MSGTYP = 'E'.
+    GT_LIST-G_ICON = ICON_LED_RED.
+    GT_LIST-MESSAGE = GT_MESSAGE-MSGV1.
+  ELSE.
+    GT_LIST-G_ICON = ICON_LED_GREEN.
+  ENDIF.
+ENDFORM. " BDC_MD75_DATA2
+*&---------------------------------------------------------------------*
+*&      Form  BDC_MD76_DATA2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BDC_MD76_DATA2 .
+  CLEAR : BDC_TAB, GT_MESSAGE.
+  REFRESH : BDC_TAB, GT_MESSAGE.
+
+  DATA :L_DATUM LIKE SY-DATUM.
+  CLEAR L_DATUM.
+
+  CASE 'X'.
+    WHEN P_RAD3."YEAR
+      CONCATENATE P_YEAR '1231' INTO L_DATUM.
+    WHEN P_RAD4."MONTH
+*      ### + 5
+      CONCATENATE P_MONTH '01' INTO L_DATUM.
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+        EXPORTING
+          DATE      = L_DATUM
+          DAYS      = 0
+          MONTHS    = 4
+          SIGNUM    = '+'
+          YEARS     = 0
+        IMPORTING
+          CALC_DATE = L_DATUM.
+*### +5 ## ### ##
+      CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+        EXPORTING
+          DAY_IN            = L_DATUM
+        IMPORTING
+          LAST_DAY_OF_MONTH = L_DATUM
+        EXCEPTIONS
+          DAY_IN_NO_DATE    = 1
+          OTHERS            = 2.
+  ENDCASE.
+
+  PERFORM BDC_DYNPRO USING :
+        'X' 'RM60RR40'      '1000',
+        ' ' 'BDC_OKCODE'    '=ONLI',
+        ' ' 'WERKS-LOW'     S_WERKS-LOW,
+        ' ' 'WERKS-HIGH'    ' ',
+        ' ' 'MATNR-LOW'     ' ',
+        ' ' 'MATNR-HIGH'    ' ',
+        ' ' 'BEDAE-LOW'     ' ',
+        ' ' 'BEDAE-HIGH'    ' ',
+        ' ' 'PBDNR-LOW'     GT_LIST-PBDNR,
+        ' ' 'PBDNR-HIGH'    ' ',
+        ' ' 'VERSB-LOW'     GT_LIST-VERSB,
+        ' ' 'VERSB-HIGH'    GT_LIST-VERSB,
+        ' ' 'HDATE'         L_DATUM,
+        ' ' 'LISTFLAG'      'X',
+        ' ' 'TESTFLAG'      ' '.
+
+  PERFORM CALL_TRANSACTION  USING 'MD76'.
+
+  READ TABLE GT_MESSAGE INDEX 1.
+  IF GT_MESSAGE-MSGTYP = 'E'.
+    GT_LIST-G_ICON = ICON_LED_RED.
+    GT_LIST-MESSAGE = GT_MESSAGE-MSGV1.
+  ELSE.
+    GT_LIST-G_ICON = ICON_LED_GREEN.
+  ENDIF.
+ENDFORM. " BDC_MD76_DATA2
+*&---------------------------------------------------------------------*
+*&      Form  EVENT_TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_DYNDOC_ID  text
+*----------------------------------------------------------------------*
+FORM EVENT_TOP_OF_PAGE USING P_E_DYNDOC_ID.
+  PERFORM ALV_HEADER.
+ENDFORM. " EVENT_TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+*&      Form  BAPI_DATA2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BAPI_DATA2 USING P_INDEX.
+  DATA : LS_BAPISITEMR  LIKE BAPISITEMR.
+  DATA : LT_BAPISSHDIN  LIKE BAPISSHDIN OCCURS 0 WITH HEADER LINE.
+  DATA : LT_BAPIRETURN1 LIKE BAPIRETURN1 OCCURS 0 WITH HEADER LINE.
+
+  DATA : L_LINE(2) TYPE C.
+  DATA : L_TABNAME(30).
+  DATA : L_QYT LIKE BAPISSHDIN-REQ_QTY.
+
+
+  FIELD-SYMBOLS: <FS>.
+  READ TABLE GT_ITAB INDEX P_INDEX.
+  CLEAR : LT_BAPIRETURN1,  LT_BAPIRETURN1[],
+          LT_BAPISSHDIN,   LT_BAPISSHDIN[],
+          LS_BAPISITEMR.
+
+
+
+  LS_BAPISITEMR-MATERIAL   = GT_ITAB-MATNR.
+  LS_BAPISITEMR-PLANT      = S_WERKS-LOW.
+  LS_BAPISITEMR-VERSION    = GT_ITAB-VERSB.
+  LS_BAPISITEMR-REQ_NUMBER = P_PBDNR.
+  LS_BAPISITEMR-VERS_ACTIV = ' '.
+
+  CLEAR L_LINE.
+  IF P_RAD1 = 'X'.
+    LOOP AT Y_DATE.
+      L_LINE = L_LINE + 1.
+      CLEAR L_TABNAME.
+      CONCATENATE 'GT_ITAB-FILED' L_LINE INTO L_TABNAME.
+      ASSIGN (L_TABNAME) TO <FS>.
+      IF <FS> <> '' AND
+         <FS> <> 0.
+        CLEAR L_QYT.
+        L_QYT = <FS>.
+        LT_BAPISSHDIN-DATE_TYPE = '3'.
+        LT_BAPISSHDIN-REQ_DATE  = Y_DATE-DAY.
+        LT_BAPISSHDIN-REQ_QTY   = L_QYT.
+        APPEND LT_BAPISSHDIN.
+      ENDIF.
+    ENDLOOP.
+  ELSEIF P_RAD2 = 'X'.
+    LOOP AT M_DAY.
+      L_LINE = L_LINE + 1.
+      CLEAR L_TABNAME.
+      CONCATENATE 'GT_ITAB-FILED' L_LINE INTO L_TABNAME.
+      ASSIGN (L_TABNAME) TO <FS>.
+      IF <FS> <> '' AND
+         <FS> <> 0.
+        CLEAR L_QYT.
+        L_QYT = <FS>.
+        LT_BAPISSHDIN-DATE_TYPE = '2'.
+        LT_BAPISSHDIN-REQ_DATE  = M_DAY-DAY.
+        LT_BAPISSHDIN-REQ_QTY   = L_QYT.
+        APPEND LT_BAPISSHDIN.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  CALL FUNCTION 'BAPI_REQUIREMENTS_CREATE'
+    EXPORTING
+      REQUIREMENTS_ITEM        = LS_BAPISITEMR
+*     DO_COMMIT                = 'X'
+*     UPDATE_MODE              = 'X'
+*     REFER_TYPE               = ' '
+*     PROFILID                 = ' '
+    TABLES
+      REQUIREMENTS_SCHEDULE_IN = LT_BAPISSHDIN
+      RETURN                   = LT_BAPIRETURN1.
+
+  IF LT_BAPIRETURN1[] IS INITIAL.
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        WAIT = 'X'.
+    GS4 = GS4 + 1.
+    GT_ITAB-BDC_TYPE = 'S'.
+    GT_ITAB-G_ICON = ICON_CHECKED.
+*      GT_ITAB-G_BOX  = ' '.
+  ELSE.
+    READ TABLE LT_BAPIRETURN1 INDEX 1.
+    IF LT_BAPIRETURN1-TYPE <> 'E'.
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+        EXPORTING
+          WAIT = 'X'.
+      GS4 = GS4 + 1.
+      GT_ITAB-BDC_TYPE = 'S'.
+      GT_ITAB-G_ICON = ICON_CHECKED.
+*        GT_ITAB-G_BOX  = ' '.
+    ELSE.
+      CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+      GS5 = GS5 + 1.
+      GT_ITAB-BDC_TYPE = 'E'.
+      GT_ITAB-G_ICON = ICON_INCOMPLETE.
+    ENDIF.
+    GT_ITAB-G_TYPE    = LT_BAPIRETURN1-TYPE.
+    GT_ITAB-G_MESSAGE = LT_BAPIRETURN1-MESSAGE.
+  ENDIF.
+  MODIFY GT_ITAB INDEX P_INDEX.
+  CLEAR  GT_ITAB.
+
+ENDFORM. " BAPI_DATA2
+*&---------------------------------------------------------------------*
+*&      Form  CHECKING_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GS_PARM_ERROR  text
+*----------------------------------------------------------------------*
+FORM CHECKING_DATA CHANGING PA_ERROR.
+  DATA : L_STR TYPE I.
+  DATA : L_PBDNR LIKE PBIM-PBDNR.
+
+  L_STR = STRLEN( P_PBDNR ).
+  CASE 'X'.
+    WHEN P_RAD1.
+
+      IF P_YEAR IS INITIAL .
+        MESSAGE S000 WITH 'INPUT THE YAER DATA'
+        DISPLAY LIKE 'E'.
+        PA_ERROR ='X'.
+        ENDIF.
+
+      IF L_STR <> 7.
+        MESSAGE S000 WITH 'REQUIREMENT PLAN KEY IS ERROR'
+        DISPLAY LIKE 'E'.
+        PA_ERROR ='X'.
+      ENDIF.
+
+      CONCATENATE 'Y' P_YEAR INTO L_PBDNR.
+
+      IF P_PBDNR(5) <> L_PBDNR.
+        MESSAGE S000 WITH 'REQUIREMENT PLAN KEY IS ERROR'
+        DISPLAY LIKE 'E'.
+        PA_ERROR ='X'.
+      ENDIF.
+
+    WHEN P_RAD2.
+
+      IF P_MONTH IS INITIAL.
+        MESSAGE S000 WITH 'INPUT THE MONTH DATA'
+        DISPLAY LIKE 'E'.
+        PA_ERROR ='X'.
+        ENDIF.
+
+      IF L_STR <> 9.
+        MESSAGE S000 WITH 'REQUIREMENT PLAN KEY IS ERROR'
+        DISPLAY LIKE 'E'.
+        PA_ERROR ='X'.
+      ENDIF.
+
+      CONCATENATE 'M' P_MONTH INTO L_PBDNR.
+
+      IF P_PBDNR(7) <> L_PBDNR.
+        MESSAGE S000 WITH 'REQUIREMENT PLAN KEY IS ERROR'
+        DISPLAY LIKE 'E'.
+        PA_ERROR ='X'.
+      ENDIF.
+  ENDCASE.
+
+    IF P_PBDNR IS INITIAL .
+    MESSAGE S000 WITH 'PLEASE INPUT THE REQUIREMENT PLAN KEY'
+       DISPLAY LIKE 'E'.
+    PA_ERROR ='X'.
+    EXIT.
+  ENDIF.
+
+ENDFORM. " CHECKING_DATA
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

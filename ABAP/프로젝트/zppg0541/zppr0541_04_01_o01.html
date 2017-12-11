@@ -1,0 +1,60 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPPR0541_04_01_O01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPPR0541_04_01_O01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPPR0541_04_01_O01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPPR0540E01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& INITIALIZATION EVENT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+INITIALIZATION.
+  PERFORM  CREATE_ICON.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& AT SELECTION-SCREEN                                                 *</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_PBDNR.
+  PERFORM F4_PBDNR USING P_PBDNR.
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*& #####                                                          *</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_YEAR.
+  PERFORM F4_YEAR.
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*& #####</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_MONTH.
+  PERFORM F4_MONTH.
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*&    AT SELECTION-SCREEN ON P_FILE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+  PERFORM F4_FILEPATH USING P_FILE '*.xls' ''.
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*& AT SELECTION-SCREEN OUTPUT.</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM MODIFY_SCREEN.
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*& AT SELECTION-SCREEN.</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+
+AT SELECTION-SCREEN.
+  PERFORM SCREEN_MESSAGE.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

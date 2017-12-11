@@ -1,0 +1,204 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPPG0150_F01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPPG0150_F01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPPG0150_F01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPPG0150_F01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_data .
+
+  CLEAR gt_data.
+
+  SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    FROM zppg0150t
+    WHERE werks EQ p_werks
+      AND budat IN s_budat
+      AND userid EQ sy-uname.
+
+  IF gt_data[] IS INITIAL.
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_FCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_0021   text</font>
+<font color ="#0000FF">*      --&gt;P_0022   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_fcat  USING    p_key
+                        p_field
+                        p_cname.
+
+  gs_fcat-key       = p_key.
+  gs_fcat-fieldname = p_field.
+
+  IF p_cname IS INITIAL.
+    gs_fcat-coltext = p_field.
+  ELSE.
+    gs_fcat-coltext   = p_cname.
+  ENDIF.
+
+  gs_fcat-ref_table = 'ZPPG0150T'.
+  gs_fcat-ref_field = p_field.
+
+  CASE p_field.
+    WHEN 'ERFMG' OR 'DELIVERY_QTY'.
+      gs_fcat-qfieldname = 'MEINS'.
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PROCESS_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM process_data .
+
+  DATA : ls_flags   TYPE bapi_rm_flg,
+         ls_datagen TYPE bapi_rm_datgen.
+  DATA : lv_confirmation TYPE bapi_rm_datkey-confirmation,
+         ls_return       TYPE bapiret2.
+
+  LOOP AT gt_data.
+
+    CASE gt_data-vaart.
+      WHEN 'A1'.
+        ls_flags-bckfltype  = '01'.
+      WHEN 'A2'.
+        ls_flags-bckfltype  = '21'.
+    ENDCASE.
+
+    ls_datagen-materialnr    = gt_data-matnr .
+    ls_datagen-prodplant     = gt_data-werks .
+    ls_datagen-prodversion   = gt_data-verid .
+    ls_datagen-batch         = gt_data-charg .
+    ls_datagen-postdate      = gt_data-budat .
+    ls_datagen-docdate       = gt_data-budat .
+    ls_datagen-backflquant   = gt_data-erfmg .
+    ls_datagen-unitofmeasure = gt_data-meins .
+    ls_datagen-docheadertxt  = gt_data-logrp.
+
+    CALL FUNCTION 'BAPI_REPMANCONF1_CREATE_MTS'
+      EXPORTING
+        bflushflags   = ls_flags
+        bflushdatagen = ls_datagen
+      IMPORTING
+        confirmation  = lv_confirmation
+        return        = ls_return.
+
+
+    IF ls_return-type EQ 'E'.
+      gt_data-stat = icon_red_light.
+      gt_data-zmsg = ls_return-message.
+      MODIFY gt_data TRANSPORTING stat zmsg.
+
+    ELSE.
+      CLEAR: gt_data-zmsg.
+      gt_data-stat = icon_green_light.
+      gt_data-prtnr = lv_confirmation.
+
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+        EXPORTING
+          wait = 'X'.
+      gt_data-mstat = '6'.
+      gt_data-prtnr = lv_confirmation.
+
+      "문서번호 찾기
+      SELECT SINGLE belnr
+        INTO gt_data-mblnr
+        FROM blpp
+        WHERE prtnr EQ lv_confirmation
+          AND prtps EQ '0001'.
+
+      MODIFY gt_data TRANSPORTING prtnr stat zmsg mblnr.
+
+    ENDIF.
+
+    CLEAR :ls_flags,ls_datagen, lv_confirmation, ls_return.
+
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  MODIFY_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM modify_data .
+
+  LOOP AT gt_data.
+
+    SELECT SINGLE verid INTO gt_data-verid
+      FROM mkal
+      WHERE matnr = gt_data-matnr
+        AND werks = gt_data-werks.
+
+    IF sy-subrc = 0.
+      MODIFY gt_data TRANSPORTING verid.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SAVE_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM save_data .
+
+  DATA : lt_0150 TYPE TABLE OF zppg0150t,
+         ls_0150 LIKE LINE OF lt_0150.
+
+  LOOP AT gt_data.
+
+    MOVE-CORRESPONDING gt_data TO ls_0150.
+
+    ls_0150-aedat = sy-datum.
+    ls_0150-aezet = sy-uzeit.
+    ls_0150-aenam = sy-uname.
+
+    APPEND ls_0150 TO lt_0150.
+    CLEAR : ls_0150.
+  ENDLOOP.
+
+  MODIFY zppg0150t FROM TABLE lt_0150.
+
+ENDFORM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

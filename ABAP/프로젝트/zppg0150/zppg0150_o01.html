@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPPG0150_O01</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPPG0150_O01</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPPG0150_O01</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  Include           ZPPG0150_O01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  STATUS_0100  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS '0100'.
+  SET TITLEBAR '0100'.
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  SET_FIELD  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE set_field OUTPUT.
+  CLEAR : gs_fcat, gt_fcat.
+  PERFORM set_fcat USING :  'X'       'STAT'            'Status',
+                            'X'       'ZMSG'            'Error Message',
+                            'X'       'VERID'           '',
+                            'X'       'USERID'          'Name of Current User'          ,
+                            'X'       'IFSEQ'           'I/F Seq'                       ,
+                            'X'       'WERKS'           'Plant'                         ,
+                            'X'       'ARBPL'           'Work center'                   ,
+                            'X'       'EQUNR'           'Machine'                       ,
+                            'X'       'LOGRP'           'Shift'                         ,
+                            'X'       'VAART'           'Processing Type'               ,
+                            'X'       'MATNR'           'Material Number'               ,
+                            ' '       'KUNNR'           'Customer Number'               ,
+                            ' '       'CHARG'           'Batch Number'                  ,
+                            ' '       'BUDAT'           '',"'Posting Date'                  ,
+                            ' '       'PDDAT'           '',"'Production Date'               ,
+                            ' '       'ERFMG'           '',"'Quantity in unit of entry'     ,
+                            ' '       'MEINS'           '',"'Base Unit of Measure'          ,
+                            ' '       'MFLAG'           '',"'Sales Mapping Process Flag'    ,
+                            ' '       'MSTAT'           '',"'Processing Status'             ,
+                            ' '       'LOT_NUMBER'      '',"'Lot Number'                    ,
+                            ' '       'SERIAL_NO'       '',"'Serial No'                     ,
+                            ' '       'DELIVERY_FLAG'   '',"'Delivery Flag'                 ,
+                            ' '       'DELIVERY_QTY'    '',"'Delivery Qty'                  ,
+                            ' '       'ALORT'           '',"'Receiving storage location'    ,
+                            ' '       'PRTNR'           '',"'Confirmation number'           ,
+                            ' '       'CANCPRTNR'       '',"'Backflush num of the reversal' ,
+                            ' '       'MBLNR'           '',"'Number of Material Document'   ,
+                            ' '       'IFRESULT'        '',"'Interface Result'              ,
+                            ' '       'IFMEG'           '',"'Interface Message'             ,
+                            ' '       'ERDAT'           '',"'Date on Record Was Created'    ,
+                            ' '       'ERZET'           '',"'Entry time'                    ,
+                            ' '       'ERNAM'           '',"'Who Created the Object'        ,
+                            ' '       'AEDAT'           '',"'Date of Last Change'           ,
+                            ' '       'AEZET'           '',"'Time last change was made'     ,
+                            ' '       'AENAM'           '',"'Person who changed object'     ,
+                            ' '       'ERDATLO'         '',"'Local Date'                    ,
+                            ' '       'ERZETLO'         '',"'Local Time'                    ,
+                            ' '       'AEDATLO'         '',"'Local Date'                    ,
+                            ' '       'AEZETLO'         '',"'Local Time'                    ,
+                            ' '       'VBELN'           ''."'Document Number'               .
+
+  gs_layout-zebra       = 'X'.
+  gs_layout-sel_mode    = 'D'.
+  gs_variant-report     = sy-repid.
+  gs_layout-cwidth_opt  = 'X'.
+
+ENDMODULE.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  DISPLAY_SCREEN  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE display_screen OUTPUT.
+
+  IF go_container IS NOT BOUND.
+    CREATE OBJECT go_container
+      EXPORTING
+        side      = go_container-&gt;dock_at_left
+        extension = 2000.
+    CREATE OBJECT go_grid
+      EXPORTING
+        i_parent = go_container.
+
+    CALL METHOD go_grid-&gt;set_table_for_first_display
+      EXPORTING
+        is_variant      = gs_variant
+        i_save          = 'X'
+        is_layout       = gs_layout
+      CHANGING
+        it_outtab       = gt_data[]
+        it_fieldcatalog = gt_fcat
+<font color ="#0000FF">*       it_sort         =</font>
+      .
+  ELSE.
+    gs_stable-row = 'X'.
+    gs_stable-col = 'X'.
+
+    CALL METHOD go_grid-&gt;refresh_table_display
+      EXPORTING
+        is_stable      = gs_stable
+        i_soft_refresh = space.
+  ENDIF.
+
+ENDMODULE.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750
+</font>
+</body>
+</html>

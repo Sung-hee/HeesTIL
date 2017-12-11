@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPPG0150
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zppg0150_top                            .    " global Data
+
+INCLUDE zppg0150_scr                            .  " Selection Screens
+INCLUDE zppg0150_o01                            .  " PBO-Modules
+INCLUDE zppg0150_i01                            .  " PAI-Modules
+INCLUDE zppg0150_f01                            .  " FORM-Routines
+
+START-OF-SELECTION.
+  PERFORM get_data.
+  PERFORM modify_data.
+  PERFORM process_data.
+  PERFORM save_data.
+
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* 0100 --> Backflush Process
+
+
+*Selection texts
+*----------------------------------------------------------
+* P_WERKS D       .
+* S_BUDAT D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 750

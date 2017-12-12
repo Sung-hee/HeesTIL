@@ -1,0 +1,29 @@
+<html>
+  <head>
+    <title>Real Blog</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <ul class="nav">
+      <li class="nav-item">
+        <a class="nav-link active" href="/">홈으로</a>
+      </li>
+    </ul>
+    <h1>여기는 관리자 페이지</h1>
+
+    <!--User에 저장된 id, email, password, created_at을 출력해주는 코드-->
+    <% @users.each do |user|%>
+      <div class="card">
+        <div class="card-body">
+          <p>Id : <%= user.id %></p>
+          <p>Email : <%= user.email %></p>
+          <p>Password : <%= user.password %></p>
+          <p>Created_at : <%= user.created_at %></p>
+        </div>
+      </div>
+    <% end %>
+  </body>
+</html>

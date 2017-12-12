@@ -81,7 +81,7 @@
 
 
 
-###2. 오늘은 CRUD 완성하기 
+###2. 오늘도 CRUD = C, R만 사용 ! 
 
 > **datamapper(ORM)을 이용해 데이터베이스를 조작하면서 실습 진행!**
 >
@@ -171,19 +171,110 @@
 >
 > - index.erb 일부분 !
 >
-> ```erb
+>  ```ruby
 > <!--Post에 저장된 title, body 을 출력해주는 코드-->
->     <% @posts.each do |post|%>
->       <p>제목 : <%= post.title %></p>
->       <p>내용 : <%= post.body %></p>
+> 	<% @posts.each do |post|%>
+>     	<p>제목 : <%= post.title %></p>
+>         <p>내용 : <%= post.body %></p>
+>      <% end %>
+>  ```
+>
+> - app.rb 추가 코드 및 수정코드 !
+>
+> ```ruby
+> # 우선 gem install sinatra-contrib 설치하자 !
+>
+> # 회원가입
+> get '/signup' do
+>   erb :signup
+> end
+>
+> # 회원가입 정보 저장
+> get '/register' do
+>   # DB에 저장하기 위해서 user 저장 폼을 만듬
+>   User.create(
+>     :email => params["email"],
+>     :password => params["password"]
+>   )
+>
+>   # 홈 페이지로 보내기
+>   redirect to '/'
+> end
+>
+> # 관리자 페이지
+> get '/admin' do
+>   # 모든 유저를 불러와
+>   # admin.erb에서 모든 유저의 정보를 보여준다.
+>   @users = User.all.reverse
+>
+>   erb :admin
+> end
+> ```
+>
+> - index.erb 추가코드 !
+>
+> ```ruby
+> get '/signup' do
+>   erb :signup
+> end
+>
+> get '/register' do
+>   # DB에 저장하기 위해서 user 저장 폼을 만듬
+>   User.create(
+>     :email => params["email"],
+>     :password => params["password"]
+>   )
+>
+>   # 홈 페이지로 보내기
+>   redirect to '/'
+> end
+> ```
+>
+> - signup.erb
+>
+> ```erb
+>   <!--헤드 라이브러리 추가-->
+> <head>
+>     <title>Real Blog</title>
+>     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+>     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+>     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+>     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+>   </head>
+>
+> <!--form action-->
+> <form action="/register">
+>       <div class="form-group">
+>         <label for="exampleInputEmail1">Email address</label>
+>         <input type="email" name="email" class="form-control" id="exampleInputEmail" aria-describedby="emailHelp" placeholder="Enter email">
+>         <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+>       </div>
+>       <div class="form-group">
+>         <label for="exampleInputPassword1">Password</label>
+>         <input type="password" name="password" class="form-control" id="exampleInputPassword" placeholder="Password">
+>       </div>
+>       <button type="submit" class="btn btn-primary">Submit</button>
+>     </form>
+> ```
+>
+> - admin.erb 코드 일부분 !
+>
+> ```erb
+>     <% @users.each do |user|%>
+>       <div class="card">
+>         <div class="card-body">
+>           <p>Email : <%= user.email %></p>
+>           <p>Password : <%= user.password %></p>
+>         </div>
+>       </div>
 >     <% end %>
 > ```
-
-
+>
+> 
 
 ### 여기서 잠깐 !!
 
-#### 3. 근데 왜 Ruby 인가?
+### 3. 근데 왜 Ruby 인가?
 
 >1. High-level : 사람 말 같고
 >
@@ -205,7 +296,7 @@
 >
 >4. Easy to use : 쉽다
 >
-> 
+>
 >
 >#### 번외] irb에서 놀아보기
 >
@@ -325,6 +416,62 @@
 >
 >puts is_palindrome?("asdsa")
 >puts is_palindrome?("asdfg")
+>```
+>
+>
+
+### 4. 외부 API 써보기 !
+
+>#### faker gem 이란
+>
+>페이크 데이터를 넣을 때 유용한 외부 API !
+>
+>```ubuntu
+>gem install faker 
+># faker gem 설치하기 !
+>```
+>
+>#### 그럼 이제 faker를 가지고 놀아보자 !!
+>
+>```ruby
+># 이번 실습은 pry 에서 합니다 !
+>require 'faker'
+>=> true
+>[3] pry(main)> Faker::Name.name
+>=> "Hans Kling"
+>[4] pry(main)> Faker::Name.name
+>=> "Reyna Klocko"
+>[5] pry(main)> Faker::Name.name
+>=> "Margarette Quitzon"
+>[6] pry(main)> Faker::Internet.email
+>=> "leila_feest@kshlerinnicolas.io"
+>[7] pry(main)> Faker::Internet.email
+>=> "nikki_borer@rolfsonortiz.biz"
+>[38] pry(main)> Faker::HarryPotter.character
+>=> "Astoria Greengrass"
+>[39] pry(main)> Faker::HarryPotter.character
+>=> "Molly Weasley"
+>[40] pry(main)> Faker::HarryPotter.character
+>=> "Filius Flitwick"
+>[45] pry(main)> Faker::HarryPotter.house
+>=> "Slytherin"
+>[47] pry(main)> Faker::LeagueOfLegends.champion
+>=> "Zed"
+>[48] pry(main)> Faker::LeagueOfLegends.champion
+>=> "Xin Zhao"
+>[49] pry(main)> Faker::LeagueOfLegends.champion
+>=> "Ahri"
+>[51] pry(main)> Faker::LeagueOfLegends.rank
+>=> "Platinum I"
+>
+># 그럼 이제 위에서 만든 블로그 회원가입에서 사용해보자 !
+>[52] pry(main)> require './app.rb'
+>[53] pry(main)> 10.times do
+>[53] pry(main)*   User.create(
+>[53] pry(main)*     :email => Faker::Internet.email,
+>[53] pry(main)*     :password => Faker::Pokemon.name
+>[53] pry(main)*   )
+>[53] pry(main)* end
 >```
 >
 >

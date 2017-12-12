@@ -1,0 +1,13 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Simle Blog</title>
+  <body>
+    <h1>글 목록보기</h1>
+    <% @blog_list.each do |e| %>
+      <p><%= e %></p>
+    <% end %>
+    <a href="/">홈으로</a>
+  </body>
+  </head>
+</html>
